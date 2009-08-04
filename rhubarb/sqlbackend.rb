@@ -37,16 +37,37 @@ class Column
 
   def initialize(name, kind, quals)
     @name, @kind = name, kind
-    @quals = quals
+    @quals = quals.map {|x| x.to_s.gsub("_", " ") if x.class == Symbol}
+    @quals.map 
   end
   
   def to_s
-    qualifiers = @quals.join(" ").gsub("_", " ")
+    qualifiers = @quals.join(" ")
     if qualifiers == ""
       "#@name #@kind"
     else
       "#@name #@kind #{qualifiers}"
     end
+  end
+end
+
+class Reference
+  attr_reader :referent
+  attr_reader :column
+
+  # klass is a class that extends Table
+  def initialize(klass, col="row_id")
+    @referent = klass
+    @column = col
+  end
+
+  def to_s
+    "references #{@referent}(#{@column})"
+  end
+
+  def managed_ref?
+    return false if referent.class == String
+    referent.ancestors.include? Table
   end
 end
 
@@ -61,8 +82,8 @@ class Table
     self.name.downcase  
   end
   
-  def self.references(table, column)
-    "references #{table} (#{column})"
+  def self.references(table, column="row_id")
+    Reference.new(table, column)
   end
 
   def self.check(condition)
@@ -90,11 +111,12 @@ class Table
     get_method_name = "#{name}".to_sym
     set_method_name = "#{name}=".to_sym
     
-    self.columns ||= [Column.new(:row_id, :integer, [:primary_key])]
-    self.colnames ||= Set.new []
-    self.constraints ||= []
-    self.dirtied ||= {}
-    
+    # does this column reference another table?
+    rf = quals.find {|q| q.class == Reference}
+    if rf
+      self.refs[name] = rf
+    end
+
     # add a find for this column (a class method)
     klass = (class << self; self end)
     klass.class_eval do 
@@ -128,17 +150,24 @@ class Table
   def self.declare_constraint(name, kind, *details)
     ensure_accessors
     info = details.join(" ")
-    @constraints.push("#{name} #{kind} #{info}")
+    @constraints.push("constraint #{name} #{kind} #{info}")
   end
   
   def self.create(*args)
-    cols = colnames.intersection args[0].keys
+    new_row = args[0]
+    cols = colnames.intersection new_row.keys
     colspec = (cols.map {|col| col.to_s}).join(", ")
     valspec = (cols.map {|col| col.inspect}).join(", ")
     res = nil
     
+    # resolve any references in the args
+    new_row.each do |k,v|
+      new_row[k] = v.row_id if v.class.ancestors.include? Table
+    end
+
     Persistence::db.transaction do |db|
-      db.execute("insert into #{table_name} (#{colspec}) values (#{valspec})", args)
+      stmt = "insert into #{table_name} (#{colspec}) values (#{valspec})"
+      db.execute(stmt, new_row)
       res = find(db.last_insert_row_id)
     end
     res
@@ -147,7 +176,11 @@ class Table
   def self.table_decl
     cols = columns.join(", ")
     consts = constraints.join(", ")
-    "create table #{table_name} (#{cols} #{consts});"
+    if consts.size > 0
+      "create table #{table_name} (#{cols}, #{consts});"
+    else
+      "create table #{table_name} (#{cols});"
+    end
   end
   
   def self.create_table
@@ -159,26 +192,58 @@ class Table
     @tuple = tup
     @expired_after = Time.now.utc
     @row_id = @tuple["row_id"]
+    resolve_referents
     self.class.dirtied[@row_id] ||= @expired_after
   end
   
+  def delete
+    Persistence::execute("delete from #{self.class.table_name} where row_id = ?", @row_id)
+    @tuple = nil
+  end
+
+  def self.count
+    result = Persistence::execute("select count(row_id) from #{table_name}")[0]
+    result[0].to_i
+  end
+
   ## Begin private methods
 
   private
   def freshen
     if @expired_after < self.class.dirtied[@row_id]
-      @tuple = Persistence::execute("select * from #{self.class.table_name} where #{row_id} = ?", @row_id)[0]
+      @tuple = Persistence::execute("select * from #{self.class.table_name} where row_id = ?", @row_id)[0]
       @expired_after = Time.now.utc
     end
   end
   
-  def self.ensure_accessors
-    # ensure that all the necessary methods on our class instance are defined
-    if not self.respond_to? :columns
-      class << self
-        attr_accessor :columns, :colnames, :constraints, :dirtied 
+  def resolve_referents
+    refs = self.class.refs
+
+    refs.each do |c,r|
+      c = c.to_s
+      if r.referent == self.class and @tuple[c] == row_id
+        @tuple[c] = self
+      else
+        row = r.referent.find @tuple[c]
+        @tuple[c] = row if row
       end
     end
+  end
+
+  def self.ensure_accessors
+    # ensure that all the necessary accessors on our class instance are defined
+    if not self.respond_to? :columns
+      class << self
+        attr_accessor :columns, :colnames, :constraints, :dirtied, :refs
+      end
+    end
+
+    # ... and that all fields have the appropriate values
+    self.columns ||= [Column.new(:row_id, :integer, [:primary_key])]
+    self.colnames ||= Set.new []
+    self.constraints ||= []
+    self.dirtied ||= {}
+    self.refs ||= {}
   end
 end
 
