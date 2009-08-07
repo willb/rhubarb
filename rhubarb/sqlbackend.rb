@@ -102,7 +102,23 @@ class Table
       self.new res[0]
     end
   end
+
+  def self.declare_query(name, query)
+    klass = (class << self; self end)
+    klass.class_eval do
+      define_method name.to_s do |*args|
+        res = Persistence::execute("select * from #{table_name} where #{query}", args)
+        res.map {|row| self.new(row)}        
+      end
+    end
+  end
   
+  def self.declare_function(name, arity, &block)
+    @creation_callbacks << Proc.new do
+      Persistence::db.create_function name, arity, block
+    end
+  end
+
   def self.declare_column(name, kind, *quals)
     ensure_accessors
     
@@ -132,7 +148,7 @@ class Table
     end
 
     self.colnames.merge([name])
-    self.columns.push(Column.new(name, kind, quals))
+    self.columns << Column.new(name, kind, quals)
     
     # add accessors
     define_method get_method_name do
@@ -140,17 +156,36 @@ class Table
       @tuple["#{name}"]
     end
     
-    define_method set_method_name do |arg|
-      @tuple["#{name}"] = arg
-      self.class.dirtied[@row_id] = Time.now.utc
-      Persistence::execute("update #{self.class.table_name} set #{name} = ? where row_id = ?", arg, @row_id)
+    if rf
+      define_method set_method_name do |arg|
+        freshen
+        self.class.dirtied[@row_id] = Time.now.utc
+
+        arg_id = nil
+
+        if arg.class == Fixnum
+          arg_id = arg
+          arg = rf.referent.find arg_id
+        else
+          arg_id = arg.row_id
+        end
+        @tuple["#{name}"] = arg
+
+        Persistence::execute("update #{self.class.table_name} set #{name} = ? where row_id = ?", arg_id, @row_id)
+      end      
+    else
+      define_method set_method_name do |arg|
+        @tuple["#{name}"] = arg
+        self.class.dirtied[@row_id] = Time.now.utc
+        Persistence::execute("update #{self.class.table_name} set #{name} = ? where row_id = ?", arg, @row_id)
+      end
     end
   end
   
   def self.declare_constraint(name, kind, *details)
     ensure_accessors
     info = details.join(" ")
-    @constraints.push("constraint #{name} #{kind} #{info}")
+    @constraints << "constraint #{name} #{kind} #{info}"
   end
   
   def self.create(*args)
@@ -159,7 +194,7 @@ class Table
     colspec = (cols.map {|col| col.to_s}).join(", ")
     valspec = (cols.map {|col| col.inspect}).join(", ")
     res = nil
-    
+
     # resolve any references in the args
     new_row.each do |k,v|
       new_row[k] = v.row_id if v.class.ancestors.include? Table
@@ -185,6 +220,7 @@ class Table
   
   def self.create_table
     Persistence::execute(table_decl)
+    @creation_callbacks.each {|func| func.call}
   end
   
   def initialize(tup)
@@ -213,6 +249,7 @@ class Table
     if @expired_after < self.class.dirtied[@row_id]
       @tuple = Persistence::execute("select * from #{self.class.table_name} where row_id = ?", @row_id)[0]
       @expired_after = Time.now.utc
+      resolve_referents
     end
   end
   
@@ -234,7 +271,7 @@ class Table
     # ensure that all the necessary accessors on our class instance are defined
     if not self.respond_to? :columns
       class << self
-        attr_accessor :columns, :colnames, :constraints, :dirtied, :refs
+        attr_accessor :columns, :colnames, :constraints, :dirtied, :refs, :creation_callbacks
       end
     end
 
@@ -244,6 +281,6 @@ class Table
     self.constraints ||= []
     self.dirtied ||= {}
     self.refs ||= {}
+    self.creation_callbacks ||= []
   end
 end
-

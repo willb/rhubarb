@@ -18,12 +18,19 @@ class TC3 < Table
 end
 
 class TC4 < Table
-  declare_column :t1, :integer, references(TestClass)
+  declare_column :t1, :integer, references(TestClass), on(:delete, :cascade)
   declare_column :t2, :integer, references(TestClass2)
 end
 
-def eigenclass(k)
-  class << k; self end
+class SelfRef < Table
+  declare_column :one, :integer, references(SelfRef)
+end
+
+class CustomQueryTable < Table
+  declare_column :one, :integer
+  declare_column :two, :integer
+  declare_query :ltcols, "one < two"
+  declare_query :ltvars, "one < ? and two < ?"
 end
 
 class BackendBasicTests < Test::Unit::TestCase
@@ -33,6 +40,8 @@ class BackendBasicTests < Test::Unit::TestCase
     TestClass2.create_table
     TC3.create_table
     TC4.create_table
+    SelfRef.create_table
+    CustomQueryTable.create_table
   end
 
   def teardown
@@ -324,11 +333,9 @@ class BackendBasicTests < Test::Unit::TestCase
       TestClass2.create t2_vals[-1]
     end
 
-    [1,2,3,4,5,6,7,8,9].each do |n|
+    1.upto(9) do |n|
       m = 10-n
       k = TC4.create(:t1 => n, :t2 => m)
-      p k
-      p k.inspect
       assert(k.t1.class == TestClass, "k.t1.class is #{k.t1.class}; should be TestClass")
       assert(k.t2.class == TestClass2, "k.t2.class is #{k.t2.class}; should be TestClass2")
     end
@@ -352,5 +359,43 @@ class BackendBasicTests < Test::Unit::TestCase
       k = TC4.create(:t1 => n, :t2 => (10 - n))
       assert(k.t1.foo == k.t2.fred, "references don't work")
     end
+  end
+
+  def test_references_sameclass
+    SelfRef.create :one => nil
+    [1,2,3].each do |num|
+      SelfRef.create :one => num
+    end
+    [4,3,2].each do |num|
+      sr = SelfRef.find num
+      assert(sr.one.class == SelfRef, "SelfRef with row ID #{num} should have a one field of type SelfRef; is #{sr.one.class} instead")
+      assert(sr.one.row_id == sr.row_id - 1, "SelfRef with row ID #{num} should have a one field with a row id of #{sr.row_id - 1}; is #{sr.one.row_id} instead")
+    end
+  end
+  
+  def test_references_circular_id
+    sr = SelfRef.create :one => nil
+    sr.one = sr.row_id
+    assert(sr == sr.one, "self-referential rows should work; instead #{sr} isn't the same as #{sr.one}")
+  end
+
+  def test_references_circular_obj
+    sr = SelfRef.create :one => nil
+    sr.one = sr
+    assert(sr == sr.one, "self-referential rows should work; instead #{sr} isn't the same as #{sr.one}")
+  end
+
+  def test_custom_query
+    1.upto(20) do |i|
+      1.upto(20) do |j|
+        CustomQueryTable.create(:one => i, :two => j)
+      end
+    end
+
+    f = CustomQueryTable.ltcols
+    f.each {|r| p "#{r.one} < #{r.two}"}
+
+    f = CustomQueryTable.ltvars 5, 7
+    f.each {|r| p "#{r.one} < 5 && #{r.two} < 7"}
   end
 end
