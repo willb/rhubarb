@@ -9,6 +9,7 @@ end
 class TestClass2 < Table
   declare_column :fred, :integer
   declare_column :barney, :string
+  declare_index_on :fred
 end
 
 class TC3 < Table
@@ -18,7 +19,7 @@ class TC3 < Table
 end
 
 class TC4 < Table
-  declare_column :t1, :integer, references(TestClass), on(:delete, :cascade)
+  declare_column :t1, :integer, references(TestClass)
   declare_column :t2, :integer, references(TestClass2)
 end
 
@@ -31,17 +32,31 @@ class CustomQueryTable < Table
   declare_column :two, :integer
   declare_query :ltcols, "one < two"
   declare_query :ltvars, "one < ? and two < ?"
+  declare_custom_query :cltvars, "select * from __TABLE__ where one < ? and two < ?"
+end
+
+class ToRef < Table
+  declare_column :foo, :string
+end
+
+class FromRef < Table
+  declare_column :t, :integer, references(ToRef, :on_delete=>:cascade)
 end
 
 class BackendBasicTests < Test::Unit::TestCase
   def setup
     Persistence::open(":memory:")
-    TestClass.create_table
-    TestClass2.create_table
-    TC3.create_table
-    TC4.create_table
-    SelfRef.create_table
-    CustomQueryTable.create_table
+    klasses = []
+    klasses << TestClass
+    klasses << TestClass2
+    klasses << TC3
+    klasses << TC4
+    klasses << SelfRef
+    klasses << CustomQueryTable
+    klasses << ToRef
+    klasses << FromRef
+    
+    klasses.each { |klass| klass.create_table }
   end
 
   def teardown
@@ -183,11 +198,11 @@ class BackendBasicTests < Test::Unit::TestCase
 
   def test_create_multiples
     tc_list = [nil]
-    [1,2,3,4,5,6,7,8,9].each do |num|
+    1.upto(9) do |num|
       tc_list.push TestClass.create(:foo => num, :bar => "argh#{num}")
     end
 
-    [1,2,3,4,5,6,7,8,9].each do |num|
+    1.upto(9) do |num|
       assert(tc_list[num].foo == num, "multiple TestClass.create invocations should return records with proper foo values")
       assert(tc_list[num].bar == "argh#{num}", "multiple TestClass.create invocations should return records with proper bar values")
 
@@ -199,8 +214,9 @@ class BackendBasicTests < Test::Unit::TestCase
   end
 
   def test_delete
-    range = [1,2,3,4,5,6,7,8,9]
-    range.each do |num|
+    range = []
+    1.upto(9) do |num|
+      range << num
       TestClass.create(:foo => num, :bar => "argh#{num}")
     end
     
@@ -211,13 +227,43 @@ class BackendBasicTests < Test::Unit::TestCase
     assert(TestClass.count == range.size - 1, "correct number of rows inserted after delete")
   end
 
+  def test_delete_2
+    TestClass.create(:foo => 42, :bar => "Wait, what was the question?")
+    tc1 = TestClass.find_first_by_foo(42)
+    tc2 = TestClass.find_first_by_foo(42)
+    
+    [tc1,tc2].each do |obj|
+      assert obj
+      assert_kind_of TestClass, obj
+      assert_equal false, obj.instance_eval {needs_refresh?}
+    end
+    
+    [:foo, :bar, :row_id].each do |msg|
+      assert_equal tc1.send(msg), tc2.send(msg)
+    end
+    
+    tc1.delete
+    
+    tc3 = TestClass.find_by_foo(42)
+    assert_equal [], tc3
+
+    tc3 = TestClass.find_first_by_foo(42)
+    assert_equal nil, tc3
+    
+    [tc1, tc2].each do |obj|
+      assert obj.deleted?
+      [:foo, :bar, :row_id].each do |msg|
+        assert_equal nil, obj.send(msg)
+      end
+    end
+  end
+
   def test_count_base
     assert(TestClass.count == 0, "a new table should have no rows")
   end
 
   def test_count_inc
-    range = [1,2,3,4,5,6,7,8,9]
-    range.each do |num|
+    1.upto(9) do |num|
       TestClass.create(:foo => num, :bar => "argh#{num}")
       assert(TestClass.count == num, "table row count should increment after each row create")
     end
@@ -323,12 +369,12 @@ class BackendBasicTests < Test::Unit::TestCase
     t_vals = []
     t2_vals = []
     
-    [1,2,3,4,5,6,7,8,9].each do |n| 
+    1.upto(9) do |n| 
       t_vals.push({:foo => n, :bar => "item-#{n}"})
       TestClass.create t_vals[-1]
     end
 
-    [9,8,7,6,5,4,3,2,1].each do |n| 
+    9.downto(1) do |n| 
       t2_vals.push({:fred => n, :barney => "barney #{n}"})
       TestClass2.create t2_vals[-1]
     end
@@ -345,17 +391,17 @@ class BackendBasicTests < Test::Unit::TestCase
     t_vals = []
     t2_vals = []
     
-    [1,2,3,4,5,6,7,8,9].each do |n| 
+    1.upto(9) do |n| 
       t_vals.push({:foo => n, :bar => "item-#{n}"})
       TestClass.create t_vals[-1]
     end
 
-    [9,8,7,6,5,4,3,2,1].each do |n| 
+    9.downto(1) do |n| 
       t2_vals.push({:fred => n, :barney => "barney #{n}"})
       TestClass2.create t2_vals[-1]
     end
 
-    [1,2,3,4,5,6,7,8,9].each do |n|
+    1.upto(9) do |n|
       k = TC4.create(:t1 => n, :t2 => (10 - n))
       assert(k.t1.foo == k.t2.fred, "references don't work")
     end
@@ -363,10 +409,10 @@ class BackendBasicTests < Test::Unit::TestCase
 
   def test_references_sameclass
     SelfRef.create :one => nil
-    [1,2,3].each do |num|
+    1.upto(3) do |num|
       SelfRef.create :one => num
     end
-    [4,3,2].each do |num|
+    4.downto(2) do |num|
       sr = SelfRef.find num
       assert(sr.one.class == SelfRef, "SelfRef with row ID #{num} should have a one field of type SelfRef; is #{sr.one.class} instead")
       assert(sr.one.row_id == sr.row_id - 1, "SelfRef with row ID #{num} should have a one field with a row id of #{sr.row_id - 1}; is #{sr.one.row_id} instead")
@@ -385,17 +431,51 @@ class BackendBasicTests < Test::Unit::TestCase
     assert(sr == sr.one, "self-referential rows should work; instead #{sr} isn't the same as #{sr.one}")
   end
 
+  def test_referential_integrity
+    assert_raise SQLite3::SQLException do 
+      FromRef.create(:t => 42)
+    end
+    
+    assert_nothing_thrown do
+      1.upto(20) do |x|
+        ToRef.create(:foo => "#{x}")
+        FromRef.create(:t => x)
+        assert_equal ToRef.count, FromRef.count
+      end
+    end
+    
+    20.downto(1) do |x|
+      ct = ToRef.count
+      tr = ToRef.find(x)
+      tr.delete
+      assert_equal ToRef.count, ct - 1
+      assert_equal ToRef.count, FromRef.count
+    end
+  end
+
   def test_custom_query
+    colresult = 0
+    varresult = 0
+    
     1.upto(20) do |i|
       1.upto(20) do |j|
         CustomQueryTable.create(:one => i, :two => j)
+        colresult = colresult.succ if i < j
+        varresult = varresult.succ if i < 5 && j < 7
       end
     end
 
     f = CustomQueryTable.ltcols
-    f.each {|r| p "#{r.one} < #{r.two}"}
+    assert(f.size() == colresult, "f.size() should equal colresult, but #{f.size()} != #{colresult}")
+    f.each {|r| assert(r.one < r.two, "#{r.one}, #{r.two} should only be in ltcols custom query if #{r.one} < #{r.two}") }
 
     f = CustomQueryTable.ltvars 5, 7
-    f.each {|r| p "#{r.one} < 5 && #{r.two} < 7"}
+    f2 = CustomQueryTable.cltvars 5, 7
+    
+    [f,f2].each do |obj|
+      assert(obj.size() == varresult, "query result size should equal varresult, but #{obj.size()} != #{varresult}")
+      obj.each {|r| assert(r.one < 5 && r.two < 7, "#{r.one}, #{r.two} should only be in ltvars/cltvars custom query if #{r.one} < 5 && #{r.two} < 7") }
+    end
+    
   end
 end
