@@ -157,11 +157,11 @@ class BackendBasicTests < Test::Unit::TestCase
   end
 
   def test_column_size
-    assert(TestClass.columns.size == 3, "TestClass has wrong number of columns")
+    assert(TestClass.columns.size == 5, "TestClass has wrong number of columns")
   end
 
   def test_tc2_column_size
-    assert(TestClass2.columns.size == 3, "TestClass2 has wrong number of columns")
+    assert(TestClass2.columns.size == 5, "TestClass2 has wrong number of columns")
   end
 
   def test_table_column_size

@@ -79,6 +79,8 @@ end
 
 class Table
   attr_reader :row_id
+  attr_reader :created
+  attr_reader :updated
   
   # Returns the name of the database table modeled by this class.
   def self.table_name
@@ -209,7 +211,8 @@ class Table
       end
       
       # Finally, add appropriate triggers to ensure referential integrity.
-      # If rf has an on_delete trigger, also add the necessary triggers to cascade deletes.
+      # If rf has an on_delete trigger, also add the necessary
+      # triggers to cascade deletes. 
       # Note that we do not support update triggers, since the API does 
       # not expose the capacity to change row IDs.
       
@@ -221,16 +224,20 @@ class Table
     end
   end
   
-  # Declares a constraint.  Only check constraints are supported; see the check method.
+  # Declares a constraint.  Only check constraints are supported; see
+  # the check method.
   def self.declare_constraint(cname, kind, *details)
     ensure_accessors
     info = details.join(" ")
     @constraints << "constraint #{cname} #{kind} #{info}"
   end
   
-  # Creates a new row in the table with the supplied column values.  May throw a SQLite3::SQLException.
+  # Creates a new row in the table with the supplied column values.
+  # May throw a SQLite3::SQLException.
   def self.create(*args)
     new_row = args[0]
+    new_row[:created] = new_row[:updated] = Time.now.utc.tv_sec
+    
     cols = colnames.intersection new_row.keys
     colspec = (cols.map {|col| col.to_s}).join(", ")
     valspec = (cols.map {|col| col.inspect}).join(", ")
@@ -243,13 +250,15 @@ class Table
 
     Persistence::db.transaction do |db|
       stmt = "insert into #{table_name} (#{colspec}) values (#{valspec})"
+#      p stmt
       db.execute(stmt, new_row)
       res = find(db.last_insert_row_id)
     end
     res
   end
   
-  # Returns a string consisting of the DDL statement to create a table corresponding to this class.
+  # Returns a string consisting of the DDL statement to create a table
+  # corresponding to this class. 
   def self.table_decl
     cols = columns.join(", ")
     consts = constraints.join(", ")
@@ -347,7 +356,7 @@ class Table
   # Helper method to update the row in the database when one of our fields changes
   def update(attr_name, value)
     mark_dirty
-    Persistence::execute("update #{self.class.table_name} set #{attr_name} = ? where row_id = ?", value, @row_id)
+    Persistence::execute("update #{self.class.table_name} set #{attr_name} = ?, updated = ? where row_id = ?", value, Time.now.utc.tv_sec, @row_id)
   end
   
   # Resolve any fields that reference other tables, replacing row ids with referred objects
@@ -372,15 +381,17 @@ class Table
     if not self.respond_to? :columns
       class << self
         # Arrays of columns, column names, and column constraints.
-        # Note that colnames does not contain id.  The API purposefully
-        # does not expose the ability to create a row with a given id
+        # Note that colnames does not contain id, created, or updated.
+        # The API purposefully does not expose the ability to create a
+        # row with a given id, and created and updated values are
+        # maintained automatically by the API.
         attr_accessor :columns, :colnames, :constraints, :dirtied, :refs, :creation_callbacks
       end
     end
 
     # Ensure singleton fields are initialized
-    self.columns ||= [Column.new(:row_id, :integer, [:primary_key])]
-    self.colnames ||= Set.new []
+    self.columns ||= [Column.new(:row_id, :integer, [:primary_key]), Column.new(:created, :integer, []), Column.new(:updated, :integer, [])]
+    self.colnames ||= Set.new [:created, :updated]
     self.constraints ||= []
     self.dirtied ||= {}
     self.refs ||= {}
