@@ -44,6 +44,13 @@ class FromRef < Table
   declare_column :t, :integer, references(ToRef, :on_delete=>:cascade)
 end
 
+class FreshTestTable < Table
+  declare_column :fee, :integer
+  declare_column :fie, :integer
+  declare_column :foe, :integer
+  declare_column :fum, :integer
+end
+
 class BackendBasicTests < Test::Unit::TestCase
   def setup
     Persistence::open(":memory:")
@@ -56,8 +63,11 @@ class BackendBasicTests < Test::Unit::TestCase
     klasses << CustomQueryTable
     klasses << ToRef
     klasses << FromRef
-    
+    klasses << FreshTestTable
+
     klasses.each { |klass| klass.create_table }
+
+    @flist = []
   end
 
   def teardown
@@ -481,5 +491,80 @@ class BackendBasicTests < Test::Unit::TestCase
       obj.each {|r| assert(r.one < 5 && r.two < 7, "#{r.one}, #{r.two} should only be in ltvars/cltvars custom query if #{r.one} < 5 && #{r.two} < 7") }
     end
     
+  end
+
+  def freshness_query_fixture
+    @flist = []
+    
+    0.upto(99) do |x|
+      @flist << FreshTestTable.create(:fee=>x, :fie=>(x%7), :foe=>(x%11), :fum=>(x%13))
+    end
+  end
+
+  def test_freshness_query_basic
+    freshness_query_fixture
+    # basic test
+    basic = FreshTestTable.find_freshest(:group_by=>[:fee])
+    
+    assert_equal(@flist.size, basic.size)
+    0.upto(99) do |x|
+      [:fee,:fie,:foe,:fum,:created,:updated,:row_id].each do |msg|
+        assert_equal(@flist[x].send(msg), basic[x].send(msg))
+      end
+    end
+  end
+
+  def test_freshness_query_basic_restricted
+    freshness_query_fixture
+    # basic test
+
+    basic = FreshTestTable.find_freshest(:group_by=>[:fee], :version=>@flist[30].created, :debug=>true)
+    
+    assert_equal(31, basic.size)
+    0.upto(30) do |x|
+      [:fee,:fie,:foe,:fum,:created,:updated,:row_id].each do |msg|
+        assert_equal(@flist[x].send(msg), basic[x].send(msg))
+      end
+    end
+  end
+
+  def test_freshness_query_basic_select
+    freshness_query_fixture
+    # basic test
+
+    basic = FreshTestTable.find_freshest(:group_by=>[:fee], :select_by=>{:fie=>0}, :debug=>true)
+
+    expected_ct = 99/7 + 1;
+
+    assert_equal(expected_ct, basic.size)
+
+    0.upto(expected_ct - 1) do |x|
+      [:fee,:fie,:foe,:fum,:created,:updated,:row_id].each do |msg|
+        assert_equal(@flist[x*7].send(msg), basic[x].send(msg))
+      end
+    end
+  end
+
+  def test_freshness_query_group_single
+    freshness_query_fixture
+    # more basic tests
+    pairs = {:fie=>7,:foe=>11,:fum=>13}
+    pairs.each do |col,ct|
+      basic = FreshTestTable.find_freshest(:group_by=>[col])
+      assert_equal(ct,basic.size)
+
+      expected_objs = {}
+
+      99.downto(99-ct+1) do |x|
+        expected_objs[x%ct] = @flist[x]
+      end
+
+      basic.each do |row|
+        res = expected_objs[row.send(col)]
+        [:fee,:fie,:foe,:fum,:created,:updated,:row_id].each do |msg|
+          assert_equal(res.send(msg), row.send(msg))
+        end
+      end
+    end
   end
 end

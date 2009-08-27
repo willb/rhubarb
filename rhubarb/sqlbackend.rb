@@ -114,6 +114,62 @@ class Table
     nil
   end
 
+  def self.find_by(arg_hash)
+    arg_hash = arg_hash.dup
+    valid_cols = self.colnames.intersection arg_hash.keys
+    select_criteria = valid_cols.map {|col| "#{col.to_s} = #{col.inspect}"}.join(" AND ")
+    arg_hash.each {|k,v| arg_hash[k] = v.row_id if v.respond_to? :row_id}
+
+    Persistence::execute("select * from #{table_name} where #{select_criteria}", arg_hash).map {|tup| self.new(tup) }
+  end
+
+  # args contains the following keys
+  #  * :group_by maps to a list of columns to group by (mandatory)
+  #  * :select_by maps to a hash mapping from column symbols to values (optional)
+  #  * :version maps to some version to be considered "current" for the purposes of this query; that is, all rows later than the "current" version will be disregarded (optional, defaults to latest version)
+  def self.find_freshest(args)
+    args = args.dup
+    
+    args[:version] ||= SQLBUtil::timestamp
+    args[:select_by] ||= {}
+    
+    query_params = {}
+    query_params[:version] = args[:version]
+    
+    select_clauses = ["created <= :version"]
+
+    valid_cols = self.colnames.intersection args[:select_by].keys
+
+    valid_cols.map do |col|
+      select_clauses << "#{col.to_s} = #{col.inspect}"
+      val = args[:select_by][col]
+      val = val.row_id if val.respond_to? :row_id
+      query_params[col] = val
+    end
+
+    group_by_clause = "GROUP BY " + args[:group_by].join(", ")
+    where_clause = "WHERE " + select_clauses.join(" AND ")
+    projection = self.colnames - [:created]
+    join_clause = projection.map do |column|
+      "__fresh.#{column} = __freshest.#{column}"
+    end
+
+    projection << "MAX(created) AS __current_version"
+    join_clause << "__fresh.__current_version = __freshest.created"
+
+    query = "
+SELECT __freshest.* FROM (
+  SELECT #{projection.to_a.join(', ')} FROM (
+    SELECT * from #{table_name} #{where_clause}
+  ) #{group_by_clause}
+) as __fresh INNER JOIN #{table_name} as __freshest ON
+  #{join_clause.join(' AND ')}
+  ORDER BY row_id
+"
+
+    Persistence::execute(query, query_params).map {|tup| self.new(tup) }
+  end
+
   # Declares a query method named +name+ and adds it to this class.  The query method returns a list of objects corresponding to the rows returned by executing "+SELECT * FROM+ _table_ +WHERE+ _query_" on the database.
   def self.declare_query(name, query)
     klass = (class << self; self end)
@@ -160,6 +216,7 @@ class Table
     
     find_method_name = "find_by_#{cname}".to_sym
     find_first_method_name = "find_first_by_#{cname}".to_sym
+    
     get_method_name = "#{cname}".to_sym
     set_method_name = "#{cname}=".to_sym
     
@@ -296,6 +353,8 @@ class Table
     @tuple = tup
     mark_fresh
     @row_id = @tuple["row_id"]
+    @created = @tuple["created"]
+    @updated = @tuple["updated"]
     resolve_referents
     self.class.dirtied[@row_id] ||= @expired_after
     self
@@ -334,7 +393,11 @@ class Table
   def freshen
     if needs_refresh?
       @tuple = self.class.find_tuple(@row_id)
-      @row_id = nil if not @tuple
+      if @tuple
+        @updated = @tuple["updated"]
+      else
+        @row_id = @updated = @created = nil
+      end
       mark_fresh
       resolve_referents
     end
@@ -353,12 +416,12 @@ class Table
   # Mark this row as dirty so that any other objects backed by this row will 
   # update from the database before their attributes are inspected
   def mark_dirty
-    self.class.dirtied[@row_id] = Time.now.utc
+    self.class.dirtied[@row_id] = SQLBUtil::timestamp
   end
   
   # Mark this row as consistent with the underlying database as of now
   def mark_fresh
-    @expired_after = Time.now.utc
+    @expired_after = SQLBUtil::timestamp
   end
   
   # Helper method to update the row in the database when one of our fields changes
