@@ -21,6 +21,7 @@ end
 class TC4 < Table
   declare_column :t1, :integer, references(TestClass)
   declare_column :t2, :integer, references(TestClass2)
+  declare_column :enabled, :boolean, :default, :true
 end
 
 class SelfRef < Table
@@ -384,6 +385,9 @@ class BackendBasicTests < Test::Unit::TestCase
       k = TC4.create(:t1 => n, :t2 => m)
       assert(k.t1.class == TestClass, "k.t1.class is #{k.t1.class}; should be TestClass")
       assert(k.t2.class == TestClass2, "k.t2.class is #{k.t2.class}; should be TestClass2")
+      assert(k.enabled)
+      k.enabled = false
+      assert(k.enabled==false)
     end
   end
 

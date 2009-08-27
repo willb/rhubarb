@@ -5,7 +5,15 @@ require 'set'
 require 'time'
 require 'sqlite3'
 
-class Persistence
+module SQLBUtil
+  def self.timestamp(tm=nil)
+    tm ||= Time.now.utc
+    (tm.tv_sec * 1000000) + tm.tv_usec
+  end
+end
+    
+
+module Persistence
   @@backend = nil
   
   def self.open(filename)
@@ -236,7 +244,7 @@ class Table
   # May throw a SQLite3::SQLException.
   def self.create(*args)
     new_row = args[0]
-    new_row[:created] = new_row[:updated] = Time.now.utc.tv_sec
+    new_row[:created] = new_row[:updated] = SQLBUtil::timestamp
     
     cols = colnames.intersection new_row.keys
     colspec = (cols.map {|col| col.to_s}).join(", ")
@@ -356,7 +364,7 @@ class Table
   # Helper method to update the row in the database when one of our fields changes
   def update(attr_name, value)
     mark_dirty
-    Persistence::execute("update #{self.class.table_name} set #{attr_name} = ?, updated = ? where row_id = ?", value, Time.now.utc.tv_sec, @row_id)
+    Persistence::execute("update #{self.class.table_name} set #{attr_name} = ?, updated = ? where row_id = ?", value, SQLBUtil::timestamp, @row_id)
   end
   
   # Resolve any fields that reference other tables, replacing row ids with referred objects
