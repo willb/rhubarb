@@ -2,6 +2,7 @@
 
 require 'rexml/document'
 require 'FileUtils'
+require 'optparse'
 
 module XmlConstants
   TYPES = {
@@ -42,6 +43,10 @@ module XmlConstants
 end
 
 module PrettyPrinter
+  def writemode
+    $PP_WRITEMODE ||= File::WRONLY|File::CREAT
+  end
+  
   def stack
     @fstack ||= [STDOUT]
   end
@@ -84,7 +89,7 @@ module PrettyPrinter
   end
   
   def with_output_to(filename, &action)
-    File::open(filename, "w") do |of|
+    File::open(filename, writemode) do |of|
       stack << of
       action.call      
       stack.pop
@@ -231,6 +236,14 @@ end
 class ModelClassGenerator
   include PrettyPrinter
   
+  def ModelClassGenerator.id_registry
+    @id_registry ||= {}
+  end
+
+  def ModelClassGenerator.class_registry
+    @class_registry ||= {}
+  end
+  
   def initialize(sc)
     @sc = sc
   end
@@ -240,7 +253,7 @@ class ModelClassGenerator
     package_dir = "./#{@package_list.join('/')}"
     FileUtils.mkdir_p package_dir
     
-    filename = "#{package_dir}/#{@sc.name}.rb"
+    filename = "#{$OUTDIR}/#{package_dir}/#{@sc.name}.rb"
     with_output_to filename do
       gen_class
     end
@@ -253,8 +266,12 @@ class ModelClassGenerator
       inc_indent
     end
     pp_decl :class, @sc.name do
+      fqcn = (@package_list.map {|pkg| pkg.capitalize} << @sc.name).join("::")
       pp "\# CLASS_ID is the identifier for all objects of this class; it is combined with an object identifier to uniquely identify QMF objects"
-      pp "CLASS_ID = #{(@sc.package + @sc.name).hash}"
+      pp "CLASS_ID = #{fqcn.hash}"
+      
+      ModelClassGenerator.id_registry[fqcn.hash] = fqcn
+      ModelClassGenerator.class_registry[fqcn] = fqcn.hash
       
       pp "\#\#\# Property method declarations" if @sc.member_count(:properties) > 0
       @sc.with_each :properties do |property|
@@ -358,7 +375,7 @@ class AppBoilerplateGenerator
     cc = "klasses"
     
     with_output_to @fn do
-      pp_decl :class, "App" do
+      pp_decl :class, "App", " < Qmf::AgentHandler" do
 
         pp_decl :def, "App.schema_classes" do
           pp "@schema_classes ||= reconstitute_classes"
@@ -402,7 +419,30 @@ class AppBoilerplateGenerator
   end  
 end
 
-class QmfSchemaCodeGenerator
+class SupportGenerator
+  
+  def gen
+smod <<END
+def get_query(context, query, userId)
+  puts "Query: user=#{userId} context=#{context} class=#{query.class_name} object_num=#{query.object_id.object_num_low if query.object_id}"
+  if query.class_name == 'parent'
+      @agent.query_response(context, @parent)
+  end
+  @agent.query_complete(context)
+end
+
+def method_call(context, name, object_id, args, userId)
+  puts "Method: user=#{userId} context=#{context} method=#{name} object_num=#{object_id.object_num_low if object_id} args=#{args} (#{args.inspect})"
+  oid = @agent.alloc_object_id(2)
+  args['result'] = "Hello, #{args['name']}!"
+  @agent.method_response(context, 0, "OK", args)
+end
+END
+  smod
+  end
+end
+
+class QmfSchemaProcessor
   include MiscUtil
   def initialize(fn)
     @package = nil
@@ -415,30 +455,30 @@ class QmfSchemaCodeGenerator
   def main
     File::open(@file, "r") {|infile| @doc = REXML::Document.new(infile)}
     
-    codegen_schema
+    process_schema
     @schema_classes.each do |klass|
       ModelClassGenerator.new(klass).gen
     end
     
-    AppBoilerplateGenerator.new(@schema_classes, "boilerplate.rb").gen
+    AppBoilerplateGenerator.new(@schema_classes, "#{$OUTDIR}/agent-app.rb").gen
   end
 
   private
   
-  def codegen_schema
+  def process_schema
     @package = @doc.root.attributes["package"]
     @package_list = @package.split(".")
     
-    @package_dir = "./#{@package_list.join('/')}"
+    @package_dir = "#{$OUTDIR}/#{@package_list.join('/')}"
     
     FileUtils.mkdir_p @package_dir
     
     REXML::XPath.each(@doc.root, "/schema/class") do |elt|
-      @schema_classes << codegen_class(elt)
+      @schema_classes << process_class(elt)
     end
   end
 
-  def codegen_class(elt)
+  def process_class(elt)
     classname = "#{elt.attributes['name']}"
 
     SchemaClass.declare classname, @package do |klass|      
@@ -462,7 +502,7 @@ class QmfSchemaCodeGenerator
         desc = method.attributes['desc']
         klass.declare_method name, desc, {} do |args|
           REXML::XPath.each(method, "arg") do |arg|
-            opts = symbolize_dict(arg.attributes, [:name, :type, :refPackage, :refClass, :dir, :unit, :min, :max, :maxlen, :desc, :default])
+            opts = symbolize_dict(arg.attributes, [:name, :type, :refPackage, :refClass, :dir, :unit, :min, :max, :maxlen, :desc, :default, :references])
             name = opts.delete(:name)
             kind = opts.delete(:type)
             dir = opts.delete(:dir)
@@ -477,4 +517,44 @@ class QmfSchemaCodeGenerator
   end
 end
 
-QmfSchemaCodeGenerator.new(ARGV[0]).main
+def main
+  $WRITEMODE
+  $OUTDIR = "."
+  
+  op = OptionParser.new do |opts|
+    opts.banner = "Usage qscg.rb [options] schema-file"
+    
+    opts.on("-n", "--noclobber", "don't overwrite pre-existing output files") do |noclob|
+      $PP_WRITEMODE = File::WRONLY|File::EXCL|File::CREAT
+    end
+    
+    opts.on("-d", "--output-dir DIR", "directory in which to place generated app and controllers") do |dir|
+      $OUTDIR = dir
+    end
+  end
+  
+  begin
+    op.parse!
+  rescue OptionParser::InvalidOption
+    puts op
+    exit
+  end
+    
+
+  begin
+    QmfSchemaProcessor.new(ARGV[0]).main
+  rescue SystemCallError => sce
+    if sce.errno == Errno::EEXIST::Errno
+      fn = sce.message.split(" ")[-1] # XXX:  won't work for filenames with spaces
+      puts "Not overwriting #{fn}; don't use --noclobber if you don't want this behavior"
+    elsif sce.errno == Errno::ENOENT::Errno
+      fn = sce.message.split(" ")[-1] # XXX:  won't work for filenames with spaces
+      puts "File or directory \"#{fn}\" not found"
+      puts sce.backtrace
+    else
+      puts "Failed due to #{sce.inspect}"
+    end
+  end
+end
+
+main
