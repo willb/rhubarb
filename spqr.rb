@@ -1,5 +1,19 @@
 #!/usr/bin/env ruby
 
+# SPQR:  Schema Processor for QMF/Ruby agents
+# Generates a skeleton QMF agent application from a schema file.
+#
+# Copyright (c) 2009 Red Hat, Inc.
+#
+# Author:  William Benton (willb@redhat.com)
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+
 require 'rexml/document'
 require 'FileUtils'
 require 'optparse'
@@ -528,7 +542,7 @@ def main
   $OUTDIR = "."
   
   op = OptionParser.new do |opts|
-    opts.banner = "Usage qscg.rb [options] schema-file"
+    opts.banner = "Usage spqr.rb [options] schema-file"
     
     opts.on("-n", "--noclobber", "don't overwrite pre-existing output files") do |noclob|
       $PP_WRITEMODE = File::WRONLY|File::EXCL|File::CREAT
