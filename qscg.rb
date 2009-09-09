@@ -265,10 +265,16 @@ class ModelClassGenerator
       pp "module #{modname}"
       inc_indent
     end
+    
     pp_decl :class, @sc.name do
       fqcn = (@package_list.map {|pkg| pkg.capitalize} << @sc.name).join("::")
       pp "\# CLASS_ID is the identifier for all objects of this class; it is combined with an object identifier to uniquely identify QMF objects"
       pp "CLASS_ID = #{fqcn.hash}"
+      
+      pp '# Find method (NB:  you must implement this)'
+      pp_decl :def, "#{@sc.name}.find_by_id", "(objid)" do
+        pp "#{@sc.name}.new"
+      end
       
       ModelClassGenerator.id_registry[fqcn.hash] = fqcn
       ModelClassGenerator.class_registry[fqcn] = fqcn.hash
