@@ -218,9 +218,9 @@ class SchemaClass
         class << @@p_args
           def declare(name, kind, dir, desc, options)
             opts = options.dup
-            kind = XmlConstants::TYPES[kind] if XmlConstants::TYPES[kind] 
-            dir = XmlConstants::DIRECTION[dir] if XmlConstants::DIRECTION[dir]
-            self << SchemaArg.new(name, kind, dir, desc, opts)
+            kind = ::XmlConstants::TYPES[kind] if ::XmlConstants::TYPES[kind] 
+            dir = ::XmlConstants::DIRECTION[dir] if ::XmlConstants::DIRECTION[dir]
+            self << ::SchemaClass::SchemaArg.new(name, kind, dir, desc, opts)
           end
         end
 
