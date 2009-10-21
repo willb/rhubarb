@@ -15,7 +15,7 @@
 
 
 require 'rexml/document'
-require 'FileUtils'
+require 'fileutils'
 require 'optparse'
 
 module XmlConstants
