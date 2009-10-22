@@ -211,22 +211,21 @@ class SchemaClass
     
     private
     def arg_struct
-      @@p_args_initialized ||= false
-      unless @@p_args_initialized
-        @@p_args = []
+      @@prototype_args ||= gen_prototype_args
+      @@prototype_args.clone
+    end
 
-        class << @@p_args
-          def declare(name, kind, dir, desc, options)
-            opts = options.dup
-            kind = ::XmlConstants::TYPES[kind] if ::XmlConstants::TYPES[kind] 
-            dir = ::XmlConstants::DIRECTION[dir] if ::XmlConstants::DIRECTION[dir]
-            self << ::SchemaClass::SchemaArg.new(name, kind, dir, desc, opts)
-          end
-        end
+    def gen_prototype_args
+      prototype_args = []
 
-        @@p_args_initialized = true
+      def prototype_args.declare(name, kind, dir, desc, options)
+        opts = options.dup
+        kind = ::XmlConstants::TYPES[kind] if ::XmlConstants::TYPES[kind] 
+        dir = ::XmlConstants::DIRECTION[dir] if ::XmlConstants::DIRECTION[dir]
+        self << ::SchemaClass::SchemaArg.new(name, kind, dir, desc, opts)
       end
-      @@p_args.clone
+
+      prototype_args
     end
   end
   
