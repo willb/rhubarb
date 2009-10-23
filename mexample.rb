@@ -1,4 +1,4 @@
-require 'managedobject'
+require 'manageable'
 
 class Hello
    include SPQR::Manageable
