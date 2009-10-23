@@ -59,9 +59,9 @@ module SPQR
     def gen_args
       result = []
 
-      def result.declare(name, kind, direction, options=nil)
+      def result.declare(name, kind, direction, description=nil, options=nil)
         options ||= {}
-        arg = ::SPQR::ArgMeta.new name, kind, direction, options.dup
+        arg = ::SPQR::ArgMeta.new name, kind, direction, description, options.dup
         self << arg
       end
 
@@ -69,7 +69,7 @@ module SPQR
     end
   end
 
-  class ArgMeta < Struct.new(:name, :kind, :description, :options)
+  class ArgMeta < Struct.new(:name, :kind, :direction, :description, :options)
     def initialize(*a)
       super *a
       self.options = (({} unless self.options) or self.options.dup)
@@ -125,6 +125,8 @@ module SPQR
       def other.spqr_property(name, kind, options=nil)
         spqr_meta.declare_property(name, kind, options)
       end
+
+      other.spqr_class other.name.to_sym
     end
   end
 end
