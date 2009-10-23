@@ -13,7 +13,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 
 module SPQR
-  class ManageableMeta < Struct.new(:classname, :package, :description, :mmethods, :options)
+  class ManageableMeta < Struct.new(:classname, :package, :description, :mmethods, :options, :statistics, :properties)
     def initialize(*a)
       super *a
       self.options = (({} unless self.options) or self.options.dup)
@@ -25,6 +25,26 @@ module SPQR
       blk.call(result.args) if blk
       self.mmethods << result
       self.mmethods[-1]
+    end
+
+    def declare_statistic(name, kind, options)
+      declare_basic(:statistic, name, kind, options)
+    end
+
+    def declare_property(name, kind, options)
+      declare_basic(:property, name, kind, options)
+    end
+
+    private
+    def declare_basic(what, name, kind, options)
+      what_plural = "#{what.to_s.gsub(/y$/, 'ie')}s"
+      w_get = what_plural.to_sym
+      w_set = "#{what_plural}=".to_sym
+
+      self.send(w_set, (self.send(w_get) or []))
+
+      w_class = "#{what.to_s.capitalize}Meta"
+      self.send(w_get) << SPQR.const_get(w_class).new(name, kind, options)
     end
   end
 
@@ -39,9 +59,9 @@ module SPQR
     def gen_args
       result = []
 
-      def result.declare(name, type, direction, options=nil)
+      def result.declare(name, kind, direction, options=nil)
         options ||= {}
-        arg = ::SPQR::ArgMeta.new name, type, direction, options.dup
+        arg = ::SPQR::ArgMeta.new name, kind, direction, options.dup
         self << arg
       end
 
@@ -49,7 +69,21 @@ module SPQR
     end
   end
 
-  class ArgMeta < Struct.new(:name, :type, :description, :options)
+  class ArgMeta < Struct.new(:name, :kind, :description, :options)
+    def initialize(*a)
+      super *a
+      self.options = (({} unless self.options) or self.options.dup)
+    end
+  end
+
+  class PropertyMeta < Struct.new(:name, :kind, :options)
+    def initialize(*a)
+      super *a
+      self.options = (({} unless self.options) or self.options.dup)
+    end
+  end
+
+  class StatisticMeta < Struct.new(:name, :kind, :options)
     def initialize(*a)
       super *a
       self.options = (({} unless self.options) or self.options.dup)
@@ -83,7 +117,14 @@ module SPQR
       def other.spqr_options(opts)
         spqr_meta.options = opts.dup
       end      
+
+      def other.spqr_statistic(name, kind, options=nil)
+        spqr_meta.declare_statistic(name, kind, options)
+      end
       
+      def other.spqr_property(name, kind, options=nil)
+        spqr_meta.declare_property(name, kind, options)
+      end
     end
   end
 end
