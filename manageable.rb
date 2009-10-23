@@ -61,10 +61,10 @@ module SPQR
     def self.included(other)
       def other.spqr_meta
         @spqr_meta ||= ::SPQR::ManageableMeta.new
-     end
+      end
 
       # Exposes a method to QMF
-      def other.expose(name, description=nil, options=nil, &blk)
+      def other.spqr_expose(name, description=nil, options=nil, &blk)
         spqr_meta.declare_method(name, description, options, blk)
       end      
     end
