@@ -13,34 +13,26 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 
 module SPQR
-  class BlankSlate
-    instance_methods.each do |m|
-      undef_method m unless m.to_s =~ /^__|freeze|method_missing|respond_to?|initialize/
+  class ManageableMeta < Struct.new(:name, :package, :description, :mmethods, :options)
+    def initialize(*a)
+      super *a
+      self.options = (({} unless self.options) or self.options.dup)
     end
-  end
 
-  class ManageableMeta < BlankSlate
-    attr_accessor :name, :package, :description, :methods, :options
-
-    def initialize
-      @methods = []
-    end
-    
-    def declare_method(name, desc, options) 
+    def declare_method(name, desc, options, blk=nil)
+      self.mmethods ||= []
       result = MethodMeta.new name, desc, options
-      yield result.args if block_given?
-      @methods << result
-      @methods[-1]
+      blk.call(result.args) if blk
+      self.mmethods << result
+      self.mmethods[-1]
     end
   end
 
-  class MethodMeta < BlankSlate
-    attr_accessor :name, :description, :args, :options
-    def initialize(n, d, opts=nil)
-      name = n
-      description = d
-      args = gen_args
-      options = (opts.dup if opts) or {}
+  class MethodMeta < Struct.new(:name, :description, :args, :options)
+    def initialize(*a)
+      super *a
+      self.options = (({} unless self.options) or self.options.dup)
+      self.args = gen_args
     end
 
     private
@@ -48,7 +40,8 @@ module SPQR
       result = []
 
       def result.declare(name, type, direction, options=nil)
-        arg = ::SPQR::ArgMeta.new name, type, direction, options
+        options ||= {}
+        arg = ::SPQR::ArgMeta.new name, type, direction, options.dup
         self << arg
       end
 
@@ -56,14 +49,10 @@ module SPQR
     end
   end
 
-  class ArgMeta < BlankSlate
-    attr_accessor :name, :type, :description, :options
-
-    def initialize(n,t,d,opts)
-      name = n
-      type = t
-      description = d
-      options = (opts.dup if opts) or {}
+  class ArgMeta < Struct.new(:name, :type, :description, :options)
+    def initialize(*a)
+      super *a
+      self.options = (({} unless self.options) or self.options.dup)
     end
   end
 
@@ -75,8 +64,8 @@ module SPQR
      end
 
       # Exposes a method to QMF
-      def other.expose(name, description=nil, options=nil, &argblock)
-        spqr_meta.declare_method(name, description, options) &argblock
+      def other.expose(name, description=nil, options=nil, &blk)
+        spqr_meta.declare_method(name, description, options, blk)
       end      
     end
   end

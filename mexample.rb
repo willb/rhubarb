@@ -6,8 +6,10 @@ class Hello
      args[:result] = "Hello, #{args[:name]}!"
    end
 
-   expose(:hello) do |args|
+   expose :hello do |args|
      args.declare :name, :string, :in
-     args.declare :result, string, :out
+     args.declare :result, :string, :out
    end
 end
+
+p Hello.spqr_meta
