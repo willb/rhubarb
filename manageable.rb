@@ -1,6 +1,6 @@
 # SPQR:  Schema Processor for QMF/Ruby agents
 #
-# Managed object mixin.
+# Manageable object mixin and support classes.
 #
 # Copyright (c) 2009 Red Hat, Inc.
 #
@@ -13,7 +13,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 
 module SPQR
-  class ManageableMeta < Struct.new(:name, :package, :description, :mmethods, :options)
+  class ManageableMeta < Struct.new(:classname, :package, :description, :mmethods, :options)
     def initialize(*a)
       super *a
       self.options = (({} unless self.options) or self.options.dup)
@@ -67,6 +67,23 @@ module SPQR
       def other.spqr_expose(name, description=nil, options=nil, &blk)
         spqr_meta.declare_method(name, description, options, blk)
       end      
+
+      def other.spqr_package(nm)
+        spqr_meta.package = nm
+      end
+
+      def other.spqr_class(nm)
+        spqr_meta.classname = nm
+      end
+
+      def other.spqr_description(d)
+        spqr_meta.description = d
+      end
+
+      def other.spqr_options(opts)
+        spqr_meta.options = opts.dup
+      end      
+      
     end
   end
 end
