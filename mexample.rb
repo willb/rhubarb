@@ -10,6 +10,9 @@ class Hello
      args.declare :name, :string, :in
      args.declare :result, :string, :out
    end
+
+   spqr_package :hello
+   spqr_class :Hello
 end
 
 p Hello.spqr_meta
