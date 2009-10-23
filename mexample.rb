@@ -13,6 +13,8 @@ class Hello
 
    spqr_package :hello
    spqr_class :Hello
+   spqr_statistic :people_greeted, :int
+   spqr_property :service_name, :string
 end
 
 p Hello.spqr_meta
