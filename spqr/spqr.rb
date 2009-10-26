@@ -292,6 +292,10 @@ class ModelClassGenerator
       ModelClassGenerator.id_registry[fqcn.hash] = fqcn
       ModelClassGenerator.class_registry[fqcn] = fqcn.hash
       
+      pp_decl :class, " << self" do
+        pp_decl :attr_accessor, :schema_class.inspect
+      end
+      
       pp "\#\#\# Property method declarations" if @sc.member_count(:properties) > 0
       @sc.with_each :properties do |property|
         gen_property property
