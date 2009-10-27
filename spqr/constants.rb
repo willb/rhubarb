@@ -48,7 +48,13 @@ module SPQR
     DIRECTION = {
       "I" => 'Qmf::DIR_IN',
       "O" => 'Qmf::DIR_OUT',
-      "IO" => 'Qmf::DIR_IN_OUT'
+      "IO" => 'Qmf::DIR_IN_OUT',
+      "i" => 'Qmf::DIR_IN',
+      "o" => 'Qmf::DIR_OUT',
+      "io" => 'Qmf::DIR_IN_OUT',
+      "in" => 'Qmf::DIR_IN',
+      "out" => 'Qmf::DIR_OUT',
+      "inout" => 'Qmf::DIR_IN_OUT'
     }
   end
 
