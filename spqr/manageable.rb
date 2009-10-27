@@ -120,10 +120,52 @@ module SPQR
 
       def other.spqr_statistic(name, kind, options=nil)
         spqr_meta.declare_statistic(name, kind, options)
+
+        self.class_eval do
+          attr_accessor name.to_sym
+        end
       end
       
       def other.spqr_property(name, kind, options=nil)
         spqr_meta.declare_property(name, kind, options)
+
+        # add a property accessor to instances of other
+        self.class_eval do
+          attr_accessor name.to_sym
+        end
+
+        if options and options[:index]
+          # if this is an index property, add a find-by method if one
+          # does not already exist
+          find_by_prop = "find_by_#{name}".to_sym
+          unless other.respond_to? find_by_prop
+            class << other
+              define_method find_by_prop do |arg|
+                raise "#{self} must define find_by_#{name}(arg)"
+              end
+            end
+          end
+        end
+      end
+
+      unless other.respond_to? :find_by_id
+        def other.find_by_id(id)
+          raise "#{self} must define find_by_id(id)"
+        end
+      end
+
+      unless other.respond_to? :find_all
+        def other.find_all
+          raise "#{self} must define find_all"
+        end
+      end
+
+      unless other.respond_to? :class_id
+        def other.class_id
+          package_list = spqr_meta.package.to_s.split(".")
+          cls = spqr_meta.classname.to_s or self.name.to_s
+          ((package_list.map {|pkg| pkg.capitalize} << cls).join("::")).hash
+        end
       end
 
       other.spqr_class other.name.to_sym
