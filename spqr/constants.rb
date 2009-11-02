@@ -15,7 +15,7 @@
 module SPQR
   
   module XmlConstants
-    TYPES = {
+    Type = {
       'absTime' => 'Qmf::TYPE_ABSTIME',
       'array' => 'Qmf::TYPE_ARRAY',      # XXX:  is this right?
       'bool' => 'Qmf::TYPE_BOOL',
@@ -38,14 +38,14 @@ module SPQR
       'uuid' => 'Qmf::TYPE_UUID'
     }
 
-    ACCESS = {
+    Access = {
       "RC" => 'Qmf::ACCESS_READ_CREATE',
       "RW" => 'Qmf::ACCESS_READ_WRITE',
       "RO" => 'Qmf::ACCESS_READ_ONLY',
       "R" => 'Qmf::ACCESS_READ_ONLY'
     }
 
-    DIRECTION = {
+    Direction = {
       "I" => 'Qmf::DIR_IN',
       "O" => 'Qmf::DIR_OUT',
       "IO" => 'Qmf::DIR_IN_OUT',
