@@ -25,15 +25,18 @@ module SPQR
       'int16' => 'Qmf::TYPE_INT16',
       'int32' => 'Qmf::TYPE_INT32',
       'int64' => 'Qmf::TYPE_INT64',
+      'int' => 'Qmf::TYPE_INT64',
       'int8' => 'Qmf::TYPE_INT8',
       'list' => 'Qmf::TYPE_LIST',        # XXX:  is this right?
       'lstr' => 'Qmf::TYPE_LSTR',
+      'string' => 'Qmf::TYPE_LSTR',
       'map' => 'Qmf::TYPE_MAP',
       'objId' => 'Qmf::TYPE_REF',
       'sstr' => 'Qmf::TYPE_SSTR',
       'uint16' => 'Qmf::TYPE_UINT16',
       'uint32' => 'Qmf::TYPE_UINT32',
       'uint64' => 'Qmf::TYPE_UINT64',
+      'uint' => 'Qmf::TYPE_UINT64',
       'uint8' => 'Qmf::TYPE_UINT8',
       'uuid' => 'Qmf::TYPE_UUID'
     }
