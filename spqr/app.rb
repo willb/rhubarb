@@ -19,12 +19,25 @@ require 'logger'
 module SPQR
   class App < Qmf::AgentHandler
     def initialize(options=nil)
-      options ||= {}
-      logfile = options[:logfile] or STDERR
-      loglevel = options[:loglevel] or Logger::WARN
+      defaults = {:logfile=>STDERR, :loglevel=>Logger::WARN}
+      
+      # convenient shorthands for log levels
+      loglevels = {:debug => Logger::DEBUG, :info => Logger::INFO, :warn => Logger::WARN, :error => Logger::ERROR, :fatal => Logger::FATAL}
+        
+      options = defaults unless options
 
-      @log = Logger.new(logfile)
-      @log.level = loglevel
+      # set unsupplied options to defaults
+      defaults.each do |k,v|
+        options[k] = v unless options[k]
+      end
+
+      # fix up shorthands
+      options[:loglevel] = loglevels[options[:loglevel]] if loglevels[options[:loglevel]]
+
+      @log = Logger.new(options[:logfile])
+      @log.level = options[:loglevel]
+
+      @log.info("initializing SPQR app....")
 
       @object_classes = []
       @schema_classes = []
@@ -57,7 +70,7 @@ module SPQR
       meta.mmethods.each do |mm|
         @log.info("+-- creating a QMF schema for method #{mm}")
         m_opts = mm.options
-        m_opts[:desc] ||= mm.description
+        m_opts[:desc] ||= mm.description if mm.description
         
         method = Qmf::SchemaMethod.new(mm.name.to_s, m_opts)
         
@@ -65,7 +78,7 @@ module SPQR
           @log.info("| +-- creating a QMF schema for arg #{arg}")
           
           arg_opts = arg.options
-          arg_opts[:desc] ||= arg.description
+          arg_opts[:desc] ||= arg.description if arg.description
           arg_opts[:dir] ||= get_xml_constant(arg.direction.to_s, ::SPQR::XmlConstants::Direction)
           arg_name = arg.name.to_s
           arg_type = get_xml_constant(arg.kind.to_s, ::SPQR::XmlConstants::Type)
