@@ -41,6 +41,7 @@ module SPQR
 
       @object_classes = []
       @schema_classes = []
+      @class_ids = {}
     end
 
     def register(*ks)
@@ -50,6 +51,7 @@ module SPQR
         @log.info("SPQR will manage registered class #{klass}...")
         @object_classes << klass
         @schema_classes << schematize(klass)
+        @class_ids[klass.class_id] = klass
       end
       
       unmanageable_ks.each do |klass|
@@ -57,7 +59,49 @@ module SPQR
       end
     end
 
+
+    def method_call(context, name, object_id, args, user_id)
+      begin
+        class_id = object_id.object_num_high
+        object_id = object_id.object_num_low
+
+        @log.debug "Method: context=#{context} method=#{name} row_id=#{row_id}, args=#{args}"
+        @log.debug "User ID: #{user_id}"
+        
+        managed_object = find_object(context, class_id, object_id)
+
+        managed_object.send(name.to_sym, args)
+        
+        @agent.method_response(context, 0, "OK", args)
+      rescue Exception => ex
+        @log.error "Error calling #{name}: #{ex}"
+        @log.error "    " + ex.backtrace.join("\n    ")
+        @agent.method_response(context, 1, "ERROR: #{ex}", args)
+      end
+    end
+
+    def main
+      # XXX:  fix and parameterize as necessary
+
+      settings = Qmf::ConnectionSettings.new
+      settings.host = 'localhost'
+      
+      @connection = Qmf::Connection.new(settings)
+      @agent = Qmf::Agent.new(self)
+
+      @schema_classes.each {|klass| @agent.register_class(klass) }
+
+      sleep
+    end
+
     private
+    
+    def find_object(ctx, c_id, obj_id)
+      # XXX:  context is currently ignored
+      klass = @class_ids[c_id]
+      klass.find_by_id(obj_id) if klass
+    end
+    
     def schematize(klass)
       @log.info("Making a QMF schema for #{klass}")
 
@@ -99,7 +143,7 @@ module SPQR
     end
     
     def manageable?(k)
-      # FIXME:  move out of App, into a utils module?
+      # FIXME:  move out of App, into Manageable or a related utils module?
       k.is_a? Class and k.included_modules.include? ::SPQR::Manageable
     end
 
