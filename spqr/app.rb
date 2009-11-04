@@ -18,6 +18,8 @@ require 'logger'
 
 module SPQR
   class App < Qmf::AgentHandler
+    class ClassMeta < Struct.new(:object_class, :schema_class) ; end
+
     def initialize(options=nil)
       defaults = {:logfile=>STDERR, :loglevel=>Logger::WARN}
       
@@ -39,9 +41,8 @@ module SPQR
 
       @log.info("initializing SPQR app....")
 
-      @object_classes = []
-      @schema_classes = []
-      @class_ids = {}
+      @classes_by_name = {}
+      @classes_by_id = {}
     end
 
     def register(*ks)
@@ -49,9 +50,11 @@ module SPQR
       unmanageable_ks = ks.select {|kl| not manageable? kl}
       manageable_ks.each do |klass|
         @log.info("SPQR will manage registered class #{klass}...")
-        @object_classes << klass
-        @schema_classes << schematize(klass)
-        @class_ids[klass.class_id] = klass
+        
+        schemaclass = schematize(klass)
+
+        @classes_by_id[klass.class_id] = klass
+        @classes_by_name[klass.name] = ClassMeta.new(klass, schemaclass)
       end
       
       unmanageable_ks.each do |klass|
@@ -60,16 +63,18 @@ module SPQR
     end
 
 
-    def method_call(context, name, object_id, args, user_id)
+    def method_call(context, name, obj_id, args, user_id)
       begin
-        class_id = object_id.object_num_high
-        object_id = object_id.object_num_low
+        class_id = obj_id.object_num_high
+        obj_id = obj_id.object_num_low
 
-        @log.debug "Method: context=#{context} method=#{name} row_id=#{row_id}, args=#{args}"
-        @log.debug "User ID: #{user_id}"
-        
-        managed_object = find_object(context, class_id, object_id)
+        @log.debug "calling method: context=#{context} method=#{name} object_id=#{obj_id}, args=#{args}, user=#{user_id}"
 
+
+        managed_object = find_object(context, class_id, obj_id)
+        @log.debug("managed object is #{managed_object}")
+
+        @log.debug("managed_object.respond_to? #{name.to_sym} ==> #{managed_object.respond_to? name.to_sym}")
         managed_object.send(name.to_sym, args)
         
         @agent.method_response(context, 0, "OK", args)
@@ -80,17 +85,47 @@ module SPQR
       end
     end
 
+    def get_query(context, query, user_id)
+      @log.debug "query: user=#{user_id} context=#{context} class=#{query.class_name} object_num=#{query.object_id.object_num_low if query.object_id} details=#{query}"
+      cmeta = @classes_by_name[query.class_name]
+      
+      if cmeta
+# FIXME:  return a collection
+
+        objs = cmeta.object_class.find_all.collect {|obj| qmfify(obj)}
+        
+        objs.each do |obj| 
+          @log.debug("query_response of: #{obj.inspect}")
+          @agent.query_response(context, obj) rescue @log.error($!.inspect)
+        end
+      end
+
+      @agent.query_complete(context)
+    end
+
     def main
       # XXX:  fix and parameterize as necessary
-
+      @log.debug("starting SPQR::App.main...")
+      
       settings = Qmf::ConnectionSettings.new
       settings.host = 'localhost'
       
       @connection = Qmf::Connection.new(settings)
+      @log.debug(" +-- @connection created:  #{@connection}")
+
       @agent = Qmf::Agent.new(self)
+      @log.debug(" +-- @agent created:  #{@agent}")
 
-      @schema_classes.each {|klass| @agent.register_class(klass) }
+      @agent.set_connection(@connection)
+      @log.debug(" +-- @agent.set_connection called")
 
+      @log.debug(" +-- registering classes...")
+      @classes_by_name.values.each do |km| 
+        @agent.register_class(km.schema_class) 
+        @log.debug(" +--+-- #{km.object_class.name} registered")
+      end
+      
+      @log.debug("entering orbit....")
       sleep
     end
 
@@ -98,7 +133,7 @@ module SPQR
     
     def find_object(ctx, c_id, obj_id)
       # XXX:  context is currently ignored
-      klass = @class_ids[c_id]
+      klass = @classes_by_id[c_id]
       klass.find_by_id(obj_id) if klass
     end
     
@@ -170,6 +205,26 @@ module SPQR
         mod = mod.const_get(m)
       end
       mod.const_get(const) rescue nil
+    end
+
+    # turns an instance of a managed object into a QmfObject
+    def qmfify(obj)
+      @log.debug("trying to qmfify #{obj}:  qmf_oid is #{obj.qmf_oid} and class_id is #{obj.class.class_id}")
+      cm = @classes_by_name[obj.class.name]
+      return nil unless cm
+
+      qmfobj = Qmf::AgentObject.new(cm.schema_class)
+
+      # TODO:  set properties, etc
+
+      @log.debug("calling alloc_object_id(#{obj.qmf_oid}, #{obj.class.class_id})")
+      oid = @agent.alloc_object_id(obj.qmf_oid, obj.class.class_id)
+      
+      @log.debug("calling qmfobj.set_object_id(#{oid})")
+      qmfobj.set_object_id(oid)
+      
+      @log.debug("returning from qmfify")
+      qmfobj
     end
   end
 end

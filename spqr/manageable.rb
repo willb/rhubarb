@@ -91,6 +91,16 @@ module SPQR
   end
 
   module Manageable
+    def qmf_oid
+      result = 0
+      if self.respond_to? :spqr_object_id 
+        result = spqr_object_id
+      else
+        result = object_id
+      end
+      
+      result & 0x7fffffff
+    end
 
     def self.included(other)
       def other.spqr_meta
@@ -164,7 +174,7 @@ module SPQR
         def other.class_id
           package_list = spqr_meta.package.to_s.split(".")
           cls = spqr_meta.classname.to_s or self.name.to_s
-          ((package_list.map {|pkg| pkg.capitalize} << cls).join("::")).hash
+          ((package_list.map {|pkg| pkg.capitalize} << cls).join("::")).hash & 0x7fffffff
         end
       end
 
