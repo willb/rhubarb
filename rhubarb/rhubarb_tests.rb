@@ -1,3 +1,16 @@
+# Test cases for Rhubarb, which is is a simple persistence layer for
+# Ruby objects and SQLite.
+#
+# Copyright (c) 2009 Red Hat, Inc.
+#
+# Author:  William Benton (willb@redhat.com)
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+
 require 'rhubarb'
 require 'test/unit'
 
