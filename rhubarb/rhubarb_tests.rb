@@ -1,4 +1,4 @@
-require 'sqlbackend'
+require 'rhubarb'
 require 'test/unit'
 
 class TestClass < Table
