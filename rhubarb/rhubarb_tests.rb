@@ -14,34 +14,34 @@
 require 'rhubarb'
 require 'test/unit'
 
-class TestClass < Table
+class TestClass < Rhubarb::Table
   declare_column :foo, :integer
   declare_column :bar, :string
 end
 
-class TestClass2 < Table
+class TestClass2 < Rhubarb::Table
   declare_column :fred, :integer
   declare_column :barney, :string
   declare_index_on :fred
 end
 
-class TC3 < Table
+class TC3 < Rhubarb::Table
   declare_column :ugh, :datetime
   declare_column :yikes, :integer
   declare_constraint :yikes_pos, check("yikes >= 0")
 end
 
-class TC4 < Table
+class TC4 < Rhubarb::Table
   declare_column :t1, :integer, references(TestClass)
   declare_column :t2, :integer, references(TestClass2)
   declare_column :enabled, :boolean, :default, :true
 end
 
-class SelfRef < Table
+class SelfRef < Rhubarb::Table
   declare_column :one, :integer, references(SelfRef)
 end
 
-class CustomQueryTable < Table
+class CustomQueryTable < Rhubarb::Table
   declare_column :one, :integer
   declare_column :two, :integer
   declare_query :ltcols, "one < two"
@@ -49,15 +49,15 @@ class CustomQueryTable < Table
   declare_custom_query :cltvars, "select * from __TABLE__ where one < ? and two < ?"
 end
 
-class ToRef < Table
+class ToRef < Rhubarb::Table
   declare_column :foo, :string
 end
 
-class FromRef < Table
+class FromRef < Rhubarb::Table
   declare_column :t, :integer, references(ToRef, :on_delete=>:cascade)
 end
 
-class FreshTestTable < Table
+class FreshTestTable < Rhubarb::Table
   declare_column :fee, :integer
   declare_column :fie, :integer
   declare_column :foe, :integer
@@ -66,7 +66,7 @@ end
 
 class BackendBasicTests < Test::Unit::TestCase
   def setup
-    Persistence::open(":memory:")
+    Rhubarb::Persistence::open(":memory:")
     klasses = []
     klasses << TestClass
     klasses << TestClass2
@@ -84,16 +84,16 @@ class BackendBasicTests < Test::Unit::TestCase
   end
 
   def teardown
-    Persistence::close()
+    Rhubarb::Persistence::close()
   end
 
   def test_persistence_setup
-    assert Persistence::db.type_translation, "type translation not enabled for db"
-    assert Persistence::db.results_as_hash, "rows-as-hashes not enabled for db"
+    assert Rhubarb::Persistence::db.type_translation, "type translation not enabled for db"
+    assert Rhubarb::Persistence::db.results_as_hash, "rows-as-hashes not enabled for db"
   end
 
   def test_reference_ctor_klass
-    r = Reference.new(TestClass)
+    r = Rhubarb::Reference.new(TestClass)
     assert(r.referent == TestClass, "Referent of managed reference instance incorrect")
     assert(r.column == "row_id", "Column of managed reference instance incorrect")
     assert(r.to_s == "references TestClass(row_id)", "string representation of managed reference instance incorrect")
@@ -101,7 +101,7 @@ class BackendBasicTests < Test::Unit::TestCase
   end
 
   def test_reference_ctor_string
-    r = Reference.new("TestClass")
+    r = Rhubarb::Reference.new("TestClass")
     assert(r.referent == "TestClass", "Referent of string-backed reference instance incorrect")
     assert(r.column == "row_id", "Column of string-backed reference instance incorrect")
     assert(r.to_s == "references TestClass(row_id)", "string representation of string-backed reference instance incorrect")
@@ -163,9 +163,9 @@ class BackendBasicTests < Test::Unit::TestCase
   def test_table_class_methods_neg
     ["foo", "bar", "fred", "barney"].each do |prefix|
       ["find_by_#{prefix}", "find_first_by_#{prefix}"].each do |m|
-        klass = class << Table; self end
+        klass = class << Rhubarb::Table; self end
         bogus_include = klass.instance_methods.include?(m)
-        assert(bogus_include == false, "#{m} method declared in Table's eigenclass; shouldn't be")
+        assert(bogus_include == false, "#{m} method declared in Rhubarb::Table's eigenclass; shouldn't be")
       end
     end
   end
@@ -189,13 +189,13 @@ class BackendBasicTests < Test::Unit::TestCase
   end
 
   def test_table_column_size
-    if Table.respond_to? :columns
-      assert(Table.columns.size == 0, "Table has wrong number of columns")
+    if Rhubarb::Table.respond_to? :columns
+      assert(Rhubarb::Table.columns.size == 0, "Rhubarb::Table has wrong number of columns")
     end
   end
 
   def test_constraints_size
-    {Table => 0, TestClass => 0, TestClass2 => 0, TC3 => 1}.each do |klass, cts|
+    {Rhubarb::Table => 0, TestClass => 0, TestClass2 => 0, TC3 => 1}.each do |klass, cts|
       if klass.respond_to? :constraints
         assert(klass.constraints.size == cts, "#{klass} has wrong number of constraints")
       end

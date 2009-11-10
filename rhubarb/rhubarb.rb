@@ -16,6 +16,8 @@ require 'set'
 require 'time'
 require 'sqlite3'
 
+module Rhubarb
+
 module SQLBUtil
   def self.timestamp(tm=nil)
     tm ||= Time.now.utc
@@ -479,4 +481,6 @@ SELECT __freshest.* FROM (
     self.refs ||= {}
     self.creation_callbacks ||= []
   end
+end
+
 end
