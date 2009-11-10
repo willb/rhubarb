@@ -90,8 +90,6 @@ module SPQR
       cmeta = @classes_by_name[query.class_name]
       
       if cmeta
-# FIXME:  return a collection
-
         objs = cmeta.object_class.find_all.collect {|obj| qmfify(obj)}
         
         objs.each do |obj| 
