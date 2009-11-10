@@ -1,0 +1,38 @@
+To do, overall:
+
+* packaging
+
+
+To do for spqr:
+
+! Statistic support
+! Property support
+! Event support
+* Broader query support
+* Documentation
+* More examples, specifically:
+   * a rhubarb/spqr example
+* Test suite
+* Fix spqr-gen (to generate classes that mix in SPQR::Manageable)
+- Automatic generation of smoke tests for services (either from schema or manageable class)
+- Automatic schema generation from agent apps
+- Usability improvements:
+   - Fewer required annotations
+   - Eliminate requirement for kwargs-style methods
+   - Automatic decoration of certain methods
+
+
+
+To do for rhubarb:
+
+* Bring code coverage up to 100%
+* Documentation
+* Standalone examples (i.e. not just "please see the test suite")
+
+
+
+Legend:
+
+! --> highest priority
+* --> standard priority
+- --> low priority
