@@ -132,7 +132,9 @@ module SPQR
         spqr_meta.declare_statistic(name, kind, options)
 
         self.class_eval do
-          attr_accessor name.to_sym
+          # XXX: should cons up a "safe_attr_accessor" method that works like this:
+          attr_reader name.to_sym unless instance_methods.include? "#{name}"
+          attr_writer name.to_sym unless instance_methods.include? "#{name}="
         end
       end
       
@@ -141,7 +143,8 @@ module SPQR
 
         # add a property accessor to instances of other
         self.class_eval do
-          attr_accessor name.to_sym
+          attr_reader name.to_sym unless instance_methods.include? "#{name}"
+          attr_writer name.to_sym unless instance_methods.include? "#{name}="
         end
 
         if options and options[:index]
