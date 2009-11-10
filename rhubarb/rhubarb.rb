@@ -75,7 +75,7 @@ end
 class Reference
   attr_reader :referent, :column, :options
 
-  # Creates a new Reference object, modeling a foreign-key relationship to another table.  +klass+ is a class that extends Table; +options+ is a hash of options, which include
+  # Creates a new Reference object, modeling a foreign-key relationship to another table.  +klass+ is a class that includes Persisting; +options+ is a hash of options, which include
   # +:column => + _name_::  specifies the name of the column to reference in +klass+ (defaults to row id)
   # +:on_delete => :cascade+:: specifies that deleting the referenced row in +klass+ will delete all rows referencing that row through this reference
   def initialize(klass, options={})
@@ -94,40 +94,38 @@ class Reference
   def managed_ref?
     # XXX?
     return false if referent.class == String
-    referent.ancestors.include? Table
+    referent.ancestors.include? Persisting
   end
 end
 
-class Table
-  attr_reader :row_id
-  attr_reader :created
-  attr_reader :updated
-  
+
+# Methods mixed in to the class object of a persisting class
+module PersistingClassMixins 
   # Returns the name of the database table modeled by this class.
-  def self.table_name
+  def table_name
     self.name.downcase  
   end
   
   # Models a foreign-key relationship. +options+ is a hash of options, which include
   # +:column => + _name_::  specifies the name of the column to reference in +klass+ (defaults to row id)
   # +:on_delete => :cascade+:: specifies that deleting the referenced row in +klass+ will delete all rows referencing that row through this reference
-  def self.references(table, options={})
+  def references(table, options={})
     Reference.new(table, options)
   end
 
   # Models a CHECK constraint.
-  def self.check(condition)
+  def check(condition)
     "check (#{condition})"
   end
   
   # Returns an object corresponding to the row with the given ID, or +nil+ if no such row exists.
-  def self.find(id)
+  def find(id)
     tup = self.find_tuple(id)
     return self.new(tup) if tup
     nil
   end
 
-  def self.find_by(arg_hash)
+  def find_by(arg_hash)
     arg_hash = arg_hash.dup
     valid_cols = self.colnames.intersection arg_hash.keys
     select_criteria = valid_cols.map {|col| "#{col.to_s} = #{col.inspect}"}.join(" AND ")
@@ -140,7 +138,7 @@ class Table
   #  * :group_by maps to a list of columns to group by (mandatory)
   #  * :select_by maps to a hash mapping from column symbols to values (optional)
   #  * :version maps to some version to be considered "current" for the purposes of this query; that is, all rows later than the "current" version will be disregarded (optional, defaults to latest version)
-  def self.find_freshest(args)
+  def find_freshest(args)
     args = args.dup
     
     args[:version] ||= SQLBUtil::timestamp
@@ -184,12 +182,12 @@ SELECT __freshest.* FROM (
   end
 
   # Declares a query method named +name+ and adds it to this class.  The query method returns a list of objects corresponding to the rows returned by executing "+SELECT * FROM+ _table_ +WHERE+ _query_" on the database.
-  def self.declare_query(name, query)
+  def declare_query(name, query)
     klass = (class << self; self end)
     klass.class_eval do
       define_method name.to_s do |*args|
         # handle reference parameters
-        args = args.map {|x| (x.row_id if x.class.ancestors.include? Table) or x}
+        args = args.map {|x| (x.row_id if x.class.ancestors.include? Persisting) or x}
         
         res = Persistence::execute("select * from #{table_name} where #{query}", args)
         res.map {|row| self.new(row)}        
@@ -198,12 +196,12 @@ SELECT __freshest.* FROM (
   end
 
   # Declares a custom query method named +name+, and adds it to this class.  The custom query method returns a list of objects corresponding to the rows returned by executing +query+ on the database.  +query+ should select all fields (with +SELECT *+).  If +query+ includes the string +\_\_TABLE\_\_+, it will be expanded to the table name.  Typically, you will want to use +declare\_query+ instead; this method is most useful for self-joins.
-  def self.declare_custom_query(name, query)
+  def declare_custom_query(name, query)
     klass = (class << self; self end)
     klass.class_eval do
       define_method name.to_s do |*args|
         # handle reference parameters
-        args = args.map {|x| (x.row_id if x.class.ancestors.include? Table) or x}
+        args = args.map {|x| (x.row_id if x.class.ancestors.include? Persisting) or x}
         
         res = Persistence::execute(query.gsub("__TABLE__", "#{self.table_name}"), args)
         # XXX:  should freshen each row?
@@ -212,7 +210,7 @@ SELECT __freshest.* FROM (
     end
   end
   
-  def self.declare_index_on(*fields)
+  def declare_index_on(*fields)
     @creation_callbacks << Proc.new do
       idx_name = "idx_#{self.table_name}__#{fields.join('__')}__#{@creation_callbacks.size}"
       creation_cmd = "create index #{idx_name} on #{self.table_name} (#{fields.join(', ')})"
@@ -224,7 +222,7 @@ SELECT __freshest.* FROM (
   # * accessors for +cname+, called +cname+ and +cname=+
   # * +find\_by\_cname+ and +find\_first\_by\_cname+ methods, which return a list of rows and the first row that have the given value for +cname+, respectively
   # If the column references a column in another table (given via a +references(...)+ argument to +quals+), then add triggers to the database to ensure referential integrity and cascade-on-delete (if specified)
-  def self.declare_column(cname, kind, *quals)
+  def declare_column(cname, kind, *quals)
     ensure_accessors
     
     find_method_name = "find_by_#{cname}".to_sym
@@ -304,7 +302,7 @@ SELECT __freshest.* FROM (
   
   # Declares a constraint.  Only check constraints are supported; see
   # the check method.
-  def self.declare_constraint(cname, kind, *details)
+  def declare_constraint(cname, kind, *details)
     ensure_accessors
     info = details.join(" ")
     @constraints << "constraint #{cname} #{kind} #{info}"
@@ -312,7 +310,7 @@ SELECT __freshest.* FROM (
   
   # Creates a new row in the table with the supplied column values.
   # May throw a SQLite3::SQLException.
-  def self.create(*args)
+  def create(*args)
     new_row = args[0]
     new_row[:created] = new_row[:updated] = SQLBUtil::timestamp
     
@@ -323,7 +321,7 @@ SELECT __freshest.* FROM (
 
     # resolve any references in the args
     new_row.each do |k,v|
-      new_row[k] = v.row_id if v.class.ancestors.include? Table
+      new_row[k] = v.row_id if v.class.ancestors.include? Persisting
     end
 
     Persistence::db.transaction do |db|
@@ -337,7 +335,7 @@ SELECT __freshest.* FROM (
   
   # Returns a string consisting of the DDL statement to create a table
   # corresponding to this class. 
-  def self.table_decl
+  def table_decl
     cols = columns.join(", ")
     consts = constraints.join(", ")
     if consts.size > 0
@@ -348,11 +346,65 @@ SELECT __freshest.* FROM (
   end
   
   # Creates a table in the database corresponding to this class.
-  def self.create_table
+  def create_table
     Persistence::execute(table_decl)
     @creation_callbacks.each {|func| func.call}
   end
 
+  # Ensure that all the necessary accessors on our class instance are defined 
+  # and that all metaclass fields have the appropriate values
+  def ensure_accessors
+    # Define singleton accessors
+    if not self.respond_to? :columns
+      class << self
+        # Arrays of columns, column names, and column constraints.
+        # Note that colnames does not contain id, created, or updated.
+        # The API purposefully does not expose the ability to create a
+        # row with a given id, and created and updated values are
+        # maintained automatically by the API.
+        attr_accessor :columns, :colnames, :constraints, :dirtied, :refs, :creation_callbacks
+      end
+    end
+
+    # Ensure singleton fields are initialized
+    self.columns ||= [Column.new(:row_id, :integer, [:primary_key]), Column.new(:created, :integer, []), Column.new(:updated, :integer, [])]
+    self.colnames ||= Set.new [:created, :updated]
+    self.constraints ||= []
+    self.dirtied ||= {}
+    self.refs ||= {}
+    self.creation_callbacks ||= []
+  end
+
+  # Returns the number of rows in the table backing this class
+  def count
+    result = Persistence::execute("select count(row_id) from #{table_name}")[0]
+    result[0].to_i
+  end
+
+  def find_tuple(id)
+    res = Persistence::execute("select * from #{table_name} where row_id = ?", id)
+    if res.size == 0
+      nil
+    else
+      res[0]
+    end
+  end
+end
+
+module Persisting
+  def self.included(other)
+    class << other
+      include PersistingClassMixins
+    end
+
+    other.class_eval do
+      attr_reader :row_id
+      attr_reader :created
+      attr_reader :updated    
+    end
+  end
+  
+  
   # Returns true if the row backing this object has been deleted from the database
   def deleted?
     freshen
@@ -380,22 +432,6 @@ SELECT __freshest.* FROM (
     mark_dirty
     @tuple = nil
     @row_id = nil
-  end
-
-  # Returns the number of rows in the table backing this class
-  def self.count
-    result = Persistence::execute("select count(row_id) from #{table_name}")[0]
-    result[0].to_i
-  end
-
-  protected
-  def self.find_tuple(id)
-    res = Persistence::execute("select * from #{table_name} where row_id = ?", id)
-    if res.size == 0
-      nil
-    else
-      res[0]
-    end
   end
 
   ## Begin private methods
@@ -458,29 +494,6 @@ SELECT __freshest.* FROM (
     end
   end
 
-  # Ensure that all the necessary accessors on our class instance are defined 
-  # and that all metaclass fields have the appropriate values
-  def self.ensure_accessors
-    # Define singleton accessors
-    if not self.respond_to? :columns
-      class << self
-        # Arrays of columns, column names, and column constraints.
-        # Note that colnames does not contain id, created, or updated.
-        # The API purposefully does not expose the ability to create a
-        # row with a given id, and created and updated values are
-        # maintained automatically by the API.
-        attr_accessor :columns, :colnames, :constraints, :dirtied, :refs, :creation_callbacks
-      end
-    end
-
-    # Ensure singleton fields are initialized
-    self.columns ||= [Column.new(:row_id, :integer, [:primary_key]), Column.new(:created, :integer, []), Column.new(:updated, :integer, [])]
-    self.colnames ||= Set.new [:created, :updated]
-    self.constraints ||= []
-    self.dirtied ||= {}
-    self.refs ||= {}
-    self.creation_callbacks ||= []
-  end
 end
 
 end

@@ -14,34 +14,40 @@
 require 'rhubarb'
 require 'test/unit'
 
-class TestClass < Rhubarb::Table
+class TestClass 
+  include Rhubarb::Persisting  
   declare_column :foo, :integer
   declare_column :bar, :string
 end
 
-class TestClass2 < Rhubarb::Table
+class TestClass2 
+  include Rhubarb::Persisting  
   declare_column :fred, :integer
   declare_column :barney, :string
   declare_index_on :fred
 end
 
-class TC3 < Rhubarb::Table
+class TC3 
+  include Rhubarb::Persisting  
   declare_column :ugh, :datetime
   declare_column :yikes, :integer
   declare_constraint :yikes_pos, check("yikes >= 0")
 end
 
-class TC4 < Rhubarb::Table
+class TC4 
+  include Rhubarb::Persisting  
   declare_column :t1, :integer, references(TestClass)
   declare_column :t2, :integer, references(TestClass2)
   declare_column :enabled, :boolean, :default, :true
 end
 
-class SelfRef < Rhubarb::Table
+class SelfRef 
+  include Rhubarb::Persisting  
   declare_column :one, :integer, references(SelfRef)
 end
 
-class CustomQueryTable < Rhubarb::Table
+class CustomQueryTable 
+  include Rhubarb::Persisting  
   declare_column :one, :integer
   declare_column :two, :integer
   declare_query :ltcols, "one < two"
@@ -49,15 +55,18 @@ class CustomQueryTable < Rhubarb::Table
   declare_custom_query :cltvars, "select * from __TABLE__ where one < ? and two < ?"
 end
 
-class ToRef < Rhubarb::Table
+class ToRef 
+  include Rhubarb::Persisting  
   declare_column :foo, :string
 end
 
-class FromRef < Rhubarb::Table
+class FromRef 
+  include Rhubarb::Persisting 
   declare_column :t, :integer, references(ToRef, :on_delete=>:cascade)
 end
 
-class FreshTestTable < Rhubarb::Table
+class FreshTestTable 
+  include Rhubarb::Persisting
   declare_column :fee, :integer
   declare_column :fie, :integer
   declare_column :foe, :integer
@@ -163,9 +172,14 @@ class BackendBasicTests < Test::Unit::TestCase
   def test_table_class_methods_neg
     ["foo", "bar", "fred", "barney"].each do |prefix|
       ["find_by_#{prefix}", "find_first_by_#{prefix}"].each do |m|
-        klass = class << Rhubarb::Table; self end
+        klass = Class.new
+
+        klass.class_eval do
+          include Rhubarb::Persisting
+        end
+
         bogus_include = klass.instance_methods.include?(m)
-        assert(bogus_include == false, "#{m} method declared in Rhubarb::Table's eigenclass; shouldn't be")
+        assert(bogus_include == false, "#{m} method declared in eigenclass of class including Rhubarb::Persisting; shouldn't be")
       end
     end
   end
@@ -189,13 +203,23 @@ class BackendBasicTests < Test::Unit::TestCase
   end
 
   def test_table_column_size
-    if Rhubarb::Table.respond_to? :columns
-      assert(Rhubarb::Table.columns.size == 0, "Rhubarb::Table has wrong number of columns")
+    klass = Class.new
+    klass.class_eval do
+      include Rhubarb::Persisting
+    end
+    if klass.respond_to? :columns
+      assert(Frotz.columns.size == 0, "A persisting class with no declared columns has the wrong number of columns")
     end
   end
 
   def test_constraints_size
-    {Rhubarb::Table => 0, TestClass => 0, TestClass2 => 0, TC3 => 1}.each do |klass, cts|
+    k = Class.new
+    
+    k.class_eval do
+      include Rhubarb::Persisting
+    end
+    
+    {k => 0, TestClass => 0, TestClass2 => 0, TC3 => 1}.each do |klass, cts|
       if klass.respond_to? :constraints
         assert(klass.constraints.size == cts, "#{klass} has wrong number of constraints")
       end
