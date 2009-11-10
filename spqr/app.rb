@@ -172,6 +172,13 @@ module SPQR
         sc.add_method(method)
       end
 
+      meta.properties.each do |prop|
+        prop_name = prop.name.to_s
+        prop_type = get_xml_constant(prop.kind.to_s, ::SPQR::XmlConstants::Type)
+        @log.debug("creating a QMF property for #{prop_name} (#{prop.kind}/#{prop_type}) with options #{prop.options.inspect}")
+        sc.add_property(Qmf::SchemaProperty.new(prop_name, prop_type, prop.options))
+      end
+
       sc
     end
     
@@ -213,7 +220,7 @@ module SPQR
 
       qmfobj = Qmf::AgentObject.new(cm.schema_class)
 
-      # TODO:  set properties, etc
+      set_props(qmfobj, obj)
 
       @log.debug("calling alloc_object_id(#{obj.qmf_oid}, #{obj.class.class_id})")
       oid = @agent.alloc_object_id(obj.qmf_oid, obj.class.class_id)
@@ -223,6 +230,16 @@ module SPQR
       
       @log.debug("returning from qmfify")
       qmfobj
+    end
+
+    def set_props(qo, o)
+      return unless o.class.respond_to? :spqr_meta
+      
+      o.class.spqr_meta.properties.each do |prop|
+        getter = prop.name.to_s
+        @log.debug("setting property #{getter} to its value from #{o}")
+        qo[getter] = o.send(getter) if o.respond_to?(getter)
+      end
     end
   end
 end

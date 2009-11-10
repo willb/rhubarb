@@ -13,6 +13,11 @@ class Hello
      args.declare :result, :lstr, :out
    end
 
+   # This is for the service_name property
+   def service_name
+     @service_name = "HelloAgent"
+   end
+
    spqr_package :hello
    spqr_class :Hello
    spqr_statistic :people_greeted, :int
