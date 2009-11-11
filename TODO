@@ -5,9 +5,8 @@ To do, overall:
 
 To do for spqr:
 
-! Statistic support
 ! Event support
-* Broader query support
+* Broader query support (partially done)
 * Documentation
 * More examples, specifically:
    * a rhubarb/spqr example

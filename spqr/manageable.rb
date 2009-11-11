@@ -132,7 +132,13 @@ module SPQR
         spqr_meta.declare_statistic(name, kind, options)
 
         self.class_eval do
-          # XXX: should cons up a "safe_attr_accessor" method that works like this:
+          # XXX: are we only interested in declaring a reader for
+          # statistics?  Doesn't it really makes more sense for the managed
+          # class to declare a method with the same name as the
+          # statistic so we aren't declaring anything at all here?
+
+          # XXX: should cons up a "safe_attr_reader" method that works
+          # like this:
           attr_reader name.to_sym unless instance_methods.include? "#{name}"
           attr_writer name.to_sym unless instance_methods.include? "#{name}="
         end
@@ -143,6 +149,7 @@ module SPQR
 
         # add a property accessor to instances of other
         self.class_eval do
+          # XXX: should cons up a "safe_attr_accessor" method that works like this:
           attr_reader name.to_sym unless instance_methods.include? "#{name}"
           attr_writer name.to_sym unless instance_methods.include? "#{name}="
         end

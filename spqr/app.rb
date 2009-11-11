@@ -87,17 +87,29 @@ module SPQR
 
     def get_query(context, query, user_id)
       @log.debug "query: user=#{user_id} context=#{context} class=#{query.class_name} object_num=#{query.object_id.object_num_low if query.object_id} details=#{query}"
+
       cmeta = @classes_by_name[query.class_name]
+      objs = []
       
+      # XXX:  are these cases mutually exclusive?
+      
+      # handle queries for a certain class
       if cmeta
-        objs = cmeta.object_class.find_all.collect {|obj| qmfify(obj)}
-        
-        objs.each do |obj| 
-          @log.debug("query_response of: #{obj.inspect}")
-          @agent.query_response(context, obj) rescue @log.error($!.inspect)
-        end
+        objs = objs + cmeta.object_class.find_all.collect {|obj| qmfify(obj)}
       end
 
+      # handle queries for a specific object
+      o = find_object(context, query.object_id.object_num_high, query.object_id.object_num_low) rescue nil
+      if o
+        objs << qmfify(o)
+      end
+
+      objs.each do |obj| 
+        @log.debug("query_response of: #{obj.inspect}")
+        @agent.query_response(context, obj) rescue @log.error($!.inspect)
+      end
+      
+      @log.debug("completing query....")
       @agent.query_complete(context)
     end
 
@@ -172,16 +184,22 @@ module SPQR
         sc.add_method(method)
       end
 
-      meta.properties.each do |prop|
-        prop_name = prop.name.to_s
-        prop_type = get_xml_constant(prop.kind.to_s, ::SPQR::XmlConstants::Type)
-        @log.debug("creating a QMF property for #{prop_name} (#{prop.kind}/#{prop_type}) with options #{prop.options.inspect}")
-        sc.add_property(Qmf::SchemaProperty.new(prop_name, prop_type, prop.options))
-      end
+      add_attributes(sc, meta.properties, :add_property, Qmf::SchemaProperty)
+      add_attributes(sc, meta.statistics, :add_statistic, Qmf::SchemaStatistic)
 
       sc
     end
     
+    def add_attributes(sc, collection, msg, klass, what=nil)
+      what ||= (msg.to_s.split("_").pop rescue "property or statistic")
+      collection.each do |basic|
+        basic_name = basic.name.to_s
+        basic_type = get_xml_constant(basic.kind.to_s, ::SPQR::XmlConstants::Type)
+        @log.debug("+-- creating a QMF schema for #{what} #{basic_name} (#{basic_type}) with options #{basic.options.inspect}")
+        sc.send(msg, klass.new(basic_name, basic_type, basic.options))
+      end
+    end
+
     def manageable?(k)
       # FIXME:  move out of App, into Manageable or a related utils module?
       k.is_a? Class and k.included_modules.include? ::SPQR::Manageable
@@ -220,7 +238,7 @@ module SPQR
 
       qmfobj = Qmf::AgentObject.new(cm.schema_class)
 
-      set_props(qmfobj, obj)
+      set_attrs(qmfobj, obj)
 
       @log.debug("calling alloc_object_id(#{obj.qmf_oid}, #{obj.class.class_id})")
       oid = @agent.alloc_object_id(obj.qmf_oid, obj.class.class_id)
@@ -232,12 +250,14 @@ module SPQR
       qmfobj
     end
 
-    def set_props(qo, o)
+    def set_attrs(qo, o)
       return unless o.class.respond_to? :spqr_meta
       
-      o.class.spqr_meta.properties.each do |prop|
-        getter = prop.name.to_s
-        @log.debug("setting property #{getter} to its value from #{o}")
+      attrs = o.class.spqr_meta.properties + o.class.spqr_meta.statistics
+
+      attrs.each do |a|
+        getter = a.name.to_s
+        @log.debug("setting property/statistic #{getter} to its value from #{o}: #{o.send(getter) if o.respond_to?(getter)}")
         qo[getter] = o.send(getter) if o.respond_to?(getter)
       end
     end
