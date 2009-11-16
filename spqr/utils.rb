@@ -20,7 +20,7 @@ module SPQR
 
   module PrettyPrinter
     def writemode
-      $PP_WRITEMODE ||= File::WRONLY|File::CREAT
+      $PP_WRITEMODE ||= File::WRONLY|File::CREAT|File::TRUNC
     end
 
     def stack
