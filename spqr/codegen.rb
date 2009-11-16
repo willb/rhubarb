@@ -296,7 +296,7 @@ module SPQR
             arg_nm = arg.name
             arg_kd = arg.kind
             arg_opts = arg.options.inspect.gsub(/^[{](.+)[}]$/, '\1')
-            pp "args.declare :#{arg_nm}, :#{arg_kd}, #{dir}, #{arg_opts}"
+            pp "args.declare :#{arg_nm}, :#{arg_kd}, :#{dir}, #{arg_opts}"
           end
         end
       end
