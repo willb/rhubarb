@@ -314,59 +314,32 @@ module SPQR
 
     # cc is the name of the variable that will hold a collection of schema classes
     def gen
-      # FIXME:  update for new, introspection-based model
-      cc = "klasses"
-
       with_output_to @fn do
-        pp_decl :class, "App", " < Qmf::AgentHandler" do
+        pp "require 'spqr/spqr'"
+        pp "require 'spqr/app'"
 
-          pp_decl :def, "App.schema_classes" do
-            pp "@schema_classes ||= reconstitute_classes"
-          end
+        pp ""
 
-          pp_decl :def, "App.reconstitute_classes" do
-            pp "#{cc} = []"
-            @scs.each do |sc|
-              klazzname = "klazz_#{sc.name}"
-              pp "#{klazzname} = Qmf::SchemaObjectClass.new(#{sc.package.inspect}, #{sc.name.inspect})"
-              sc.with_each :properties do |prop|
-                pp "#{klazzname}.add_property(Qmf::SchemaProperty.new(#{prop.name.inspect}, #{prop.kind}, #{prop.options.inspect}))"
-              end
-
-              sc.with_each :statistics do |stat|
-                pp "#{klazzname}.add_statistic(Qmf::SchemaStatistic.new(#{stat.name.inspect}, #{stat.kind}, #{stat.options.inspect}))"
-              end
-
-              sc.with_each :methods do |mth|
-                methodname = "#{klazzname}_#{mth.name}"
-                pp "#{methodname} = Qmf::SchemaMethod.new(#{mth.name.inspect}, #{mth.options.inspect})"
-
-                mth.args.each do |arg|
-                  pp "#{methodname}.add_argument(Qmf::SchemaArgument.new(#{arg.name.inspect}, #{arg.kind}, #{arg.options.inspect}))"
-                end
-
-                pp "#{klazzname}.add_method(#{methodname})"
-                pp ""
-                pp "#{cc} << #{klazzname}"
-                pp ""
-              end
-
-              pp "#{cc}"
-            end
-          end
-
-          pp "private_class_method :reconstitute_classes"
-
+        @scs.each do |sc|
+          pp("require '#{sc.package.gsub(/[.]/, '/')}/#{sc.name}'")
         end
+
+        
+        pp ""
+        
+        pp "app = SPQR::App.new(:loglevel => :debug)"
+        
+        klass_list = @scs.collect do |sc|
+          (sc.package.split(".").collect{|pkg| pkg.capitalize} << sc.name).join("::")
+        end
+        
+        pp "app.register #{klass_list.join ','}"
+        
+        pp ""
+
+        pp "app.main"
       end
     end  
-  end
-
-  class SupportGenerator
-
-    def gen
-      ""
-    end
   end
 
   class QmfSchemaProcessor
