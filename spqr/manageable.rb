@@ -17,6 +17,8 @@ module SPQR
     def initialize(*a)
       super *a
       self.options = (({} unless self.options) or self.options.dup)
+      self.statistics = [] unless self.statistics
+      self.properties = [] unless self.properties
     end
 
     def declare_method(name, desc, options, blk=nil)
