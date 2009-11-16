@@ -167,14 +167,14 @@ module SPQR
           @log.info("| +-- creating a QMF schema for arg #{arg}")
           
           arg_opts = arg.options
-          arg_opts[:desc] ||= arg.description if arg.description
+          arg_opts[:desc] ||= arg.description if (arg.description and arg.description.is_a? String)
           arg_opts[:dir] ||= get_xml_constant(arg.direction.to_s, ::SPQR::XmlConstants::Direction)
           arg_name = arg.name.to_s
           arg_type = get_xml_constant(arg.kind.to_s, ::SPQR::XmlConstants::Type)
           
           if @log.level <= Logger::DEBUG
             local_variables.grep(/^arg_/).each do |local|
-              @log.debug("      #{local} --> #{eval local}")
+              @log.debug("      #{local} --> #{(eval local).inspect}")
             end
           end
 
