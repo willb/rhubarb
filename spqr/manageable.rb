@@ -107,6 +107,14 @@ module SPQR
         @spqr_meta ||= ::SPQR::ManageableMeta.new
       end
 
+      def other.spqr_logger=(logger)
+        @spqr_log = logger
+      end
+
+      def other.spqr_logger
+        @spqr_log ||= ::SPQR::Sink.new
+      end
+
       # Exposes a method to QMF
       def other.spqr_expose(name, description=nil, options=nil, &blk)
         spqr_meta.declare_method(name, description, options, blk)
