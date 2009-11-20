@@ -102,6 +102,10 @@ module SPQR
       result & 0x7fffffff
     end
 
+    def qmf_id
+      [qmf_oid, self.class.class_id]
+    end
+
     def self.included(other)
       def other.spqr_meta
         @spqr_meta ||= ::SPQR::ManageableMeta.new

@@ -77,6 +77,10 @@ module SPQR
         @log.debug("managed_object.respond_to? #{name.to_sym} ==> #{managed_object.respond_to? name.to_sym}")
         managed_object.send(name.to_sym, args)
         
+        args.each do |k,v|
+          args[k] = encode_object(v) if v.kind_of?(::SPQR::Manageable)
+        end
+
         @agent.method_response(context, 0, "OK", args)
       rescue Exception => ex
         @log.error "Error calling #{name}: #{ex}"
@@ -141,6 +145,10 @@ module SPQR
 
     private
     
+    def encode_object(o)
+      @agent.alloc_object_id(*(o.qmf_id))
+    end
+
     def find_object(ctx, c_id, obj_id)
       # XXX:  context is currently ignored
       klass = @classes_by_id[c_id]
