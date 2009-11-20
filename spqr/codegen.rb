@@ -70,7 +70,7 @@ module SPQR
       opts = options.dup
       opts[:index] = true if opts[:index]
       desc = opts.delete(:desc)
-      kind = XmlConstants::TYPES[kind] if XmlConstants::TYPES[kind] 
+
       where << SchemaBasic.new(what, name, desc, kind, opts)
       where[-1]
     end
@@ -114,8 +114,7 @@ module SPQR
 
         def prototype_args.declare(name, kind, dir, desc, options)
           opts = options.dup
-          kind = ::SPQR::XmlConstants::TYPES[kind] if ::SPQR::XmlConstants::TYPES[kind] 
-          dir = ::SPQR::XmlConstants::DIRECTION[dir] if ::SPQR::XmlConstants::DIRECTION[dir]
+
           self << ::SPQR::SchemaClass::SchemaArg.new(name, kind, dir, desc, opts)
         end
 
@@ -174,9 +173,10 @@ module SPQR
       end
 
       pp_decl :class, @sc.name do
-        fqcn = (@package_list.map {|pkg| pkg.capitalize} << @sc.name).join("::")
-        pp "\# CLASS_ID is the identifier for all objects of this class; it is combined with an object identifier to uniquely identify QMF objects"
-        pp "CLASS_ID = #{fqcn.hash}"
+        pkgname = (@package_list.map {|pkg| pkg.capitalize}).join("::")
+        fqcn = ("#{pkgname}::#{@sc.name}" if pkgname) or @sc.name
+
+        pp "include SPQR::Manageable"
 
         pp '# Find method (NB:  you must implement this)'
         pp_decl :def, "#{@sc.name}.find_by_id", "(objid)" do
@@ -185,10 +185,6 @@ module SPQR
 
         ModelClassGenerator.id_registry[fqcn.hash] = fqcn
         ModelClassGenerator.class_registry[fqcn] = fqcn.hash
-
-        pp_decl :class, " << self" do
-          pp_decl :attr_accessor, :schema_class.inspect
-        end
 
         pp "\#\#\# Property method declarations" if @sc.member_count(:properties) > 0
         @sc.with_each :properties do |property|
@@ -219,6 +215,17 @@ module SPQR
         pp "puts 'Requested property #{property.name}'"
         pp "nil"
       end
+
+      pp ""
+      pp_decl :def, "#{property.name}=", "(val)" do
+        pp "puts 'Set property #{property.name} to \#\{val\}'"
+        pp "nil"
+      end
+      
+      property.options[:desc] = property.desc if property.desc
+
+      pp ""
+      pp "spqr_property #{property.name.to_sym.inspect}, #{property.kind.to_sym.inspect}, #{property.options.inspect.gsub(/[{}]/, '')}"
     end
 
     def gen_statistic(statistic)
@@ -228,6 +235,11 @@ module SPQR
         pp "puts 'Requested statistic #{statistic.name}'"
         pp "nil"
       end
+      
+      statistic.options[:desc] = statistic.desc if statistic.desc
+      
+      pp ""
+      pp "spqr_property #{statistic.name.to_sym.inspect}, #{statistic.kind.to_sym.inspect}, #{statistic.options.inspect.gsub(/[{}]/, '')}"
     end
 
     def gen_method(method)
@@ -237,24 +249,25 @@ module SPQR
         pp "\# * #{arg.name} (#{arg.kind}/#{arg.dir})"
         pp "\# #{arg.desc}"
       end
-
+      
+      in_params = method.args.select {|arg| ['in', 'i', 'qmf::dir_in'].include? arg.dir.to_s.downcase }
+      out_params = method.args.select {|arg| ['out', 'o', 'qmf::dir_out'].include? arg.dir.to_s.downcase }
+      inout_params = method.args.select {|arg| ['inout', 'io', 'qmf::dir_inout'].include? arg.dir.to_s.downcase }
+      
       pp_decl :def, method.name, "(args)" do
-        in_params = method.args.select {|arg| arg.dir == 'Qmf::DIR_IN'}
-        out_params = method.args.select {|arg| arg.dir == 'Qmf::DIR_OUT'}
-        inout_params = method.args.select {|arg| arg.dir == 'Qmf::DIR_IN_OUT'}
-
+        
         if in_params.size + inout_params.size > 0  
           what = "in"
-
+          
           if in_params.size > 0 and inout_params.size > 0
             what << " and in/out"
           elsif inout_params.size > 0
             what << "/out"
           end
-
+          
           pp "\# Print values of #{what} parameters"
           (in_params + inout_params).each do |arg|
-            pp 'puts "' + "#{arg.name} => " + '#{args[' + arg.name.to_sym.inspect + ']}"' + " \# #{}"
+            pp('puts "' + "#{arg.name} => " + '#{args[' + arg.name.to_sym.inspect + ']}"' + " \# #{}")
           end
         end
 
@@ -274,6 +287,19 @@ module SPQR
           end
         end
       end
+
+
+      pp ""
+      pp_decl :spqr_expose, "#{method.name.to_sym.inspect} do |args|" do
+        {:in => in_params, :inout => inout_params, :out => out_params}.each do |dir,coll|
+          coll.each do |arg|
+            arg_nm = arg.name
+            arg_kd = arg.kind
+            arg_opts = arg.options.inspect.gsub(/^[{](.+)[}]$/, '\1')
+            pp "args.declare :#{arg_nm}, :#{arg_kd}, :#{dir}, #{arg_opts}"
+          end
+        end
+      end
     end
   end
 
@@ -288,75 +314,32 @@ module SPQR
 
     # cc is the name of the variable that will hold a collection of schema classes
     def gen
-
-      cc = "klasses"
-
       with_output_to @fn do
-        pp_decl :class, "App", " < Qmf::AgentHandler" do
+        pp "require 'spqr/spqr'"
+        pp "require 'spqr/app'"
 
-          pp_decl :def, "App.schema_classes" do
-            pp "@schema_classes ||= reconstitute_classes"
-          end
+        pp ""
 
-          pp_decl :def, "App.reconstitute_classes" do
-            pp "#{cc} = []"
-            @scs.each do |sc|
-              klazzname = "klazz_#{sc.name}"
-              pp "#{klazzname} = Qmf::SchemaObjectClass.new(#{sc.package.inspect}, #{sc.name.inspect})"
-              sc.with_each :properties do |prop|
-                pp "#{klazzname}.add_property(Qmf::SchemaProperty.new(#{prop.name.inspect}, #{prop.kind}, #{prop.options.inspect}))"
-              end
-
-              sc.with_each :statistics do |stat|
-                pp "#{klazzname}.add_statistic(Qmf::SchemaStatistic.new(#{stat.name.inspect}, #{stat.kind}, #{stat.options.inspect}))"
-              end
-
-              sc.with_each :methods do |mth|
-                methodname = "#{klazzname}_#{mth.name}"
-                pp "#{methodname} = Qmf::SchemaMethod.new(#{mth.name.inspect}, #{mth.options.inspect})"
-
-                mth.args.each do |arg|
-                  pp "#{methodname}.add_argument(Qmf::SchemaArgument.new(#{arg.name.inspect}, #{arg.kind}, #{arg.options.inspect}))"
-                end
-
-                pp "#{klazzname}.add_method(#{methodname})"
-                pp ""
-                pp "#{cc} << #{klazzname}"
-                pp ""
-              end
-
-              pp "#{cc}"
-            end
-          end
-
-          pp "private_class_method :reconstitute_classes"
-
+        @scs.each do |sc|
+          pp("require '#{sc.package.gsub(/[.]/, '/')}/#{sc.name}'")
         end
+
+        
+        pp ""
+        
+        pp "app = SPQR::App.new(:loglevel => :debug)"
+        
+        klass_list = @scs.collect do |sc|
+          (sc.package.split(".").collect{|pkg| pkg.capitalize} << sc.name).join("::")
+        end
+        
+        pp "app.register #{klass_list.join ','}"
+        
+        pp ""
+
+        pp "app.main"
       end
     end  
-  end
-
-  class SupportGenerator
-
-    def gen
-  smod <<END
-  def get_query(context, query, userId)
-    puts "Query: user=#{userId} context=#{context} class=#{query.class_name} object_num=#{query.object_id.object_num_low if query.object_id}"
-    if query.class_name == 'parent'
-        @agent.query_response(context, @parent)
-    end
-    @agent.query_complete(context)
-  end
-
-  def method_call(context, name, object_id, args, userId)
-    puts "Method: user=#{userId} context=#{context} method=#{name} object_num=#{object_id.object_num_low if object_id} args=#{args} (#{args.inspect})"
-    oid = @agent.alloc_object_id(2)
-    args['result'] = "Hello, #{args['name']}!"
-    @agent.method_response(context, 0, "OK", args)
-  end
-END
-    smod
-    end
   end
 
   class QmfSchemaProcessor

@@ -11,9 +11,16 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 
 module SPQR
+  class Sink
+    def method_missing(*args)
+      yield if block_given?
+      nil
+    end
+  end
+
   module PrettyPrinter
     def writemode
-      $PP_WRITEMODE ||= File::WRONLY|File::CREAT
+      $PP_WRITEMODE ||= File::WRONLY|File::CREAT|File::TRUNC
     end
 
     def stack

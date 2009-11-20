@@ -17,6 +17,8 @@ module SPQR
     def initialize(*a)
       super *a
       self.options = (({} unless self.options) or self.options.dup)
+      self.statistics = [] unless self.statistics
+      self.properties = [] unless self.properties
     end
 
     def declare_method(name, desc, options, blk=nil)
@@ -109,6 +111,14 @@ module SPQR
     def self.included(other)
       def other.spqr_meta
         @spqr_meta ||= ::SPQR::ManageableMeta.new
+      end
+
+      def other.spqr_logger=(logger)
+        @spqr_log = logger
+      end
+
+      def other.spqr_logger
+        @spqr_log ||= ::SPQR::Sink.new
       end
 
       # Exposes a method to QMF
