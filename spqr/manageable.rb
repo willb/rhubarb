@@ -19,10 +19,10 @@ module SPQR
       self.options = (({} unless self.options) or self.options.dup)
       self.statistics = [] unless self.statistics
       self.properties = [] unless self.properties
+      self.mmethods ||= []
     end
 
     def declare_method(name, desc, options, blk=nil)
-      self.mmethods ||= []
       result = MethodMeta.new name, desc, options
       blk.call(result.args) if blk
       self.mmethods << result

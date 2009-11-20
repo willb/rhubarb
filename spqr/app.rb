@@ -70,15 +70,22 @@ module SPQR
 
         @log.debug "calling method: context=#{context} method=#{name} object_id=#{obj_id}, args=#{args}, user=#{user_id}"
 
+        # Turn the Qmf::Arguments structure into a proper ruby hash
+
+        # XXX: consider adding appropriate impl method to Manageable
+        # to avoid this little dance
+        hash_args = qmf_arguments_to_hash(args)
 
         managed_object = find_object(context, class_id, obj_id)
         @log.debug("managed object is #{managed_object}")
 
         @log.debug("managed_object.respond_to? #{name.to_sym} ==> #{managed_object.respond_to? name.to_sym}")
-        managed_object.send(name.to_sym, args)
+        managed_object.send(name.to_sym, hash_args)
         
-        args.each do |k,v|
-          args[k] = encode_object(v) if v.kind_of?(::SPQR::Manageable)
+        # Copy any out parameters from hash_args from the
+        # Qmf::Arguments structure; see XXX above
+        hash_args.each do |k,v|
+          args[k] = (encode_object(v) if v.kind_of?(::SPQR::Manageable)) or v
         end
 
         @agent.method_response(context, 0, "OK", args)
@@ -145,6 +152,14 @@ module SPQR
 
     private
     
+    def qmf_arguments_to_hash(args)
+      result = {}
+      args.each do |k,v|
+        result[k] = v
+      end
+      result
+    end
+
     def encode_object(o)
       @agent.alloc_object_id(*(o.qmf_id))
     end
@@ -266,7 +281,13 @@ module SPQR
       attrs.each do |a|
         getter = a.name.to_s
         @log.debug("setting property/statistic #{getter} to its value from #{o}: #{o.send(getter) if o.respond_to?(getter)}")
-        qo[getter] = o.send(getter) if o.respond_to?(getter)
+        value = o.send(getter) if o.respond_to?(getter)
+        if value
+          # XXX: remove this line when/if Manageable includes an
+          # appropriate impl method
+          value = encode_object(value) if value.kind_of?(::SPQR::Manageable)
+          qo[getter] = value
+        end
       end
     end
   end
