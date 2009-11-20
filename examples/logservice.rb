@@ -1,5 +1,27 @@
 #!/usr/bin/env ruby
 
+# This is a simple logging service that operates over QMF.  The API is
+# pretty basic:
+#   LogService is a singleton and supports the following methods:
+#    * debug(msg)
+#    * warn(msg)
+#    * info(msg)
+#    * error(msg)
+#   each of which creates a log record of the given severity,
+#   timestamped with the current time, and with msg as the log
+#   message.
+#
+#   LogRecord corresponds to an individual log entry, and exposes the
+#   following (read-only) properties:
+#    * l_when (unsigned int), seconds since the epoch corresponding to
+#      this log record's creation date
+#    * severity (long string), a string representation of the severity
+#    * msg (long string), the log message
+#
+# If you invoke logservice.rb with an argument, it will place the
+# generated log records in that file, and they will persist between
+# invocations.
+
 require 'spqr/spqr'
 require 'spqr/app'
 require 'rhubarb/rhubarb'
@@ -48,10 +70,18 @@ class LogRecord
 
   spqr_package :examples
   spqr_class :LogRecord
+
+  def spqr_object_id
+    row_id
+  end
 end
 
-Rhubarb::Persistence::open(":memory:")
-LogRecord.create_table
+TABLE = ARGV[0] rescue ":memory:" 
+DO_CREATE = (TABLE == ":memory:" or not File.exist?(TABLE))
+
+Rhubarb::Persistence::open(TABLE)
+
+LogRecord.create_table if DO_CREATE
 
 app = SPQR::App.new(:loglevel => :debug)
 app.register LogService, LogRecord
