@@ -87,7 +87,8 @@ module SPQR
         # Copy any out parameters from hash_args from the
         # Qmf::Arguments structure; see XXX above
         hash_args.each do |k,v|
-          args[k] = (encode_object(v) if v.kind_of?(::SPQR::Manageable)) or v
+          encoded_val = encode_object(v)
+          args[k] = encoded_val
         end
 
         @agent.method_response(context, 0, "OK", args)
@@ -163,6 +164,7 @@ module SPQR
     end
 
     def encode_object(o)
+      return o unless o.kind_of? ::SPQR::Manageable
       @agent.alloc_object_id(*(o.qmf_id))
     end
 
