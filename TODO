@@ -8,10 +8,7 @@ To do for spqr:
 ! Event support
 * Broader query support (partially done)
 * Documentation
-* More examples, specifically:
-   * a rhubarb/spqr example
 * Test suite
-* Fix spqr-gen (to generate classes that mix in SPQR::Manageable)
 - Automatic generation of smoke tests for services (either from schema or manageable class)
 - Automatic schema generation from agent apps
 - Usability improvements:
