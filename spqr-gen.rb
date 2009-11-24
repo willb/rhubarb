@@ -21,8 +21,6 @@ def main
   $WRITEMODE
   $OUTDIR = "."
 
-  puts "WARNING:  spqr-gen is currently in a state of flux.\nIt will not work as you expect it to, or maybe at all."
-  
   op = OptionParser.new do |opts|
     opts.banner = "Usage spqr.rb [options] schema-file"
     
