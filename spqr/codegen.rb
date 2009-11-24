@@ -183,6 +183,11 @@ module SPQR
           pp "#{@sc.name}.new"
         end
 
+        pp "\n# Find-all method (NB:  you must implement this)"
+        pp_decl :def, "#{@sc.name}.find_all" do
+          pp "[#{@sc.name}.new]"
+        end
+
         ModelClassGenerator.id_registry[fqcn.hash] = fqcn
         ModelClassGenerator.class_registry[fqcn] = fqcn.hash
 
