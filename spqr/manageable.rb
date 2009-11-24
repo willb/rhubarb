@@ -108,6 +108,10 @@ module SPQR
       [qmf_oid, self.class.class_id]
     end
 
+    def log
+      self.class.spqr_logger
+    end
+
     def self.included(other)
       def other.spqr_meta
         @spqr_meta ||= ::SPQR::ManageableMeta.new
@@ -118,7 +122,7 @@ module SPQR
       end
 
       def other.spqr_logger
-        @spqr_log ||= ::SPQR::Sink.new
+        @spqr_log || ::SPQR::Sink.new
       end
 
       # Exposes a method to QMF
