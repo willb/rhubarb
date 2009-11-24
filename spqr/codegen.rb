@@ -217,13 +217,13 @@ module SPQR
       pp ""
       pp "\# property #{property.name} #{property.kind} #{property.desc}"
       pp_decl :def, "#{property.name}" do
-        pp "puts 'Requested property #{property.name}'"
+        pp "log.debug 'Requested property #{property.name}'"
         pp "nil"
       end
 
       pp ""
       pp_decl :def, "#{property.name}=", "(val)" do
-        pp "puts 'Set property #{property.name} to \#\{val\}'"
+        pp "log.debug 'Set property #{property.name} to \#\{val\}'"
         pp "nil"
       end
       
@@ -237,7 +237,7 @@ module SPQR
       pp ""
       pp "\# statistic #{statistic.name}"
       pp_decl :def, "#{statistic.name}" do
-        pp "puts 'Requested statistic #{statistic.name}'"
+        pp "log.debug 'Requested statistic #{statistic.name}'"
         pp "nil"
       end
       
@@ -272,7 +272,8 @@ module SPQR
           
           pp "\# Print values of #{what} parameters"
           (in_params + inout_params).each do |arg|
-            pp('puts "' + "#{arg.name} => " + '#{args[' + arg.name.to_sym.inspect + ']}"' + " \# #{}")
+            argdisplay = arg.name.to_s.inspect
+            pp('log.debug "' + "#{arg.name} => " + '#{args[' + "#{argdisplay}" + ']}"' + " \# #{}")
           end
         end
 
@@ -288,7 +289,8 @@ module SPQR
           pp "\# Assign values to #{what} parameters"
 
           (out_params + inout_params).each do |arg|
-            pp "args[#{arg.name.to_sym.inspect}] = args[#{arg.name.to_sym.inspect}]"
+            argdisplay = arg.name.to_s.inspect
+            pp "args[#{argdisplay}] = args[#{argdisplay}]"
           end
         end
       end
