@@ -76,7 +76,7 @@ class LogRecord
   end
 end
 
-TABLE = ARGV[0] rescue ":memory:" 
+TABLE = ARGV[0] or ":memory:" 
 DO_CREATE = (TABLE == ":memory:" or not File.exist?(TABLE))
 
 Rhubarb::Persistence::open(TABLE)
