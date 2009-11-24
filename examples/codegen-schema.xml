@@ -1,0 +1,7 @@
+<schema package="examples.codegen">
+  <class name="EchoAgent">
+    <method name="echo" desc="returns its argument">
+      <arg name="arg" dir="IO" type="lstr"/>
+    </method>
+  </class>
+</schema>
