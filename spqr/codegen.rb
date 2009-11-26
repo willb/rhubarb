@@ -177,6 +177,10 @@ module SPQR
         fqcn = ("#{pkgname}::#{@sc.name}" if pkgname) or @sc.name
 
         pp "include SPQR::Manageable"
+        pp ""
+
+        pp "spqr_package '#{@package_list.join(".")}'"
+        pp "spqr_class '#{@sc.name.split("::")[-1]}'"
 
         pp '# Find method (NB:  you must implement this)'
         pp_decl :def, "#{@sc.name}.find_by_id", "(objid)" do
