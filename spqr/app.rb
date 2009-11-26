@@ -49,7 +49,7 @@ module SPQR
       manageable_ks = ks.select {|kl| manageable? kl}
       unmanageable_ks = ks.select {|kl| not manageable? kl}
       manageable_ks.each do |klass|
-        @log.info("SPQR will manage registered class #{klass}...")
+        @log.info("SPQR will manage registered class #{klass} (#{klass.name})...")
         
         schemaclass = schematize(klass)
 
@@ -146,7 +146,7 @@ module SPQR
       @log.debug(" +-- registering classes...")
       @classes_by_name.values.each do |km| 
         @agent.register_class(km.schema_class) 
-        @log.debug(" +--+-- #{km.object_class.name} registered")
+        @log.debug(" +--+-- #{km.schema_class.package_name} #{km.schema_class.class_name} registered")
       end
       
       @log.debug("entering orbit....")
@@ -180,6 +180,7 @@ module SPQR
       meta = klass.spqr_meta
       package = meta.package.to_s
       classname = meta.classname.to_s
+      @log.info("+-- class #{classname} is in package #{package}")
 
       sc = Qmf::SchemaObjectClass.new(package, classname)
       
