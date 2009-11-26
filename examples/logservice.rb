@@ -22,6 +22,7 @@
 # generated log records in that file, and they will persist between
 # invocations.
 
+require 'rubygems'
 require 'spqr/spqr'
 require 'spqr/app'
 require 'rhubarb/rhubarb'

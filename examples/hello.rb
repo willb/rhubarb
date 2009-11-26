@@ -1,3 +1,4 @@
+require 'rubygems'
 require 'spqr/spqr'
 require 'spqr/app'
 require 'logger'
