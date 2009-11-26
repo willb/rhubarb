@@ -1,8 +1,28 @@
+= spqr
+
 SPQR is a tool to automatically generate QMF applications from Ruby
 classes, and to automatically generate Ruby classes from QMF schema
-descriptions.  (The spqr-gen tool, which provides the latter
-capability, is currently in a state of flux due to recent changes in
-the SPQR library interface.  It will be functional again soon.)
+descriptions.  See the examples directory in the source distribution 
+for examples.
 
-Rhubarb is a simple persistence layer that stores instances of Ruby
-classes in a SQLite3 database.
+Rhubarb, which is included with SPQR, is a simple versioned
+object-graph persistence layer that stores instances of specially-
+declared Ruby classes in a SQLite3 database.
+
+== Maintainer
+
+Will Benton (willb@redhat.com)
+
+== Patches and pull requests
+ 
+* Please add tests for any new features you add.
+* Send me a pull request; ideally, your functionality is on a topic branch forked from my master.
+
+== Credits
+
+* Thanks to William Henry for suggesting the "rhubarb" name
+* Gem support by technicalpickles' jeweler
+
+== Copyright
+
+Copyright (c) 2009 Red Hat, Inc. See LICENSE for details.
