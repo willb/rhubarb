@@ -11,7 +11,8 @@
 # 
 #     http://www.apache.org/licenses/LICENSE-2.0
 
-require 'rhubarb'
+require 'rubygems'
+require 'rhubarb/rhubarb'
 require 'test/unit'
 
 class TestClass 
