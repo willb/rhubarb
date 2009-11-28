@@ -92,6 +92,85 @@ module SPQR
     end
   end
 
+  module ManageableClassMixins
+    def spqr_meta
+      @spqr_meta ||= ::SPQR::ManageableMeta.new
+    end
+    
+    def spqr_logger=(logger)
+      @spqr_log = logger
+    end
+    
+    def spqr_logger
+      @spqr_log || ::SPQR::Sink.new
+    end
+    
+    # Exposes a method to QMF
+    def spqr_expose(name, description=nil, options=nil, &blk)
+      spqr_meta.declare_method(name, description, options, blk)
+    end      
+    
+    def spqr_package(nm)
+      spqr_meta.package = nm
+    end
+    
+    def spqr_class(nm)
+      spqr_meta.classname = nm
+    end
+    
+    def spqr_description(d)
+      spqr_meta.description = d
+    end
+    
+    def spqr_options(opts)
+      spqr_meta.options = opts.dup
+    end      
+    
+    def spqr_statistic(name, kind, options=nil)
+      spqr_meta.declare_statistic(name, kind, options)
+      
+      self.class_eval do
+        # XXX: are we only interested in declaring a reader for
+        # statistics?  Doesn't it really makes more sense for the managed
+        # class to declare a method with the same name as the
+        # statistic so we aren't declaring anything at all here?
+        
+        # XXX: should cons up a "safe_attr_reader" method that works
+        # like this:
+        attr_reader name.to_sym unless instance_methods.include? "#{name}"
+        attr_writer name.to_sym unless instance_methods.include? "#{name}="
+      end
+    end
+    
+    def spqr_property(name, kind, options=nil)
+      spqr_meta.declare_property(name, kind, options)
+      
+      # add a property accessor to instances of other
+      self.class_eval do
+        # XXX: should cons up a "safe_attr_accessor" method that works like this:
+        attr_reader name.to_sym unless instance_methods.include? "#{name}"
+        attr_writer name.to_sym unless instance_methods.include? "#{name}="
+      end
+      
+      if options and options[:index]
+        # if this is an index property, add a find-by method if one
+        # does not already exist
+        spqr_define_index_find(name)
+      end
+    end
+    
+    private
+    def spqr_define_index_find(name)
+      find_by_prop = "find_by_#{name}".to_sym
+
+      return if self.respond_to? find_by_prop
+
+      define_method find_by_prop do |arg|
+        raise "#{self} must define find_by_#{name}(arg)"
+      end
+    end
+  end
+
   module Manageable
     def qmf_oid
       result = 0
@@ -113,77 +192,8 @@ module SPQR
     end
 
     def self.included(other)
-      def other.spqr_meta
-        @spqr_meta ||= ::SPQR::ManageableMeta.new
-      end
-
-      def other.spqr_logger=(logger)
-        @spqr_log = logger
-      end
-
-      def other.spqr_logger
-        @spqr_log || ::SPQR::Sink.new
-      end
-
-      # Exposes a method to QMF
-      def other.spqr_expose(name, description=nil, options=nil, &blk)
-        spqr_meta.declare_method(name, description, options, blk)
-      end      
-
-      def other.spqr_package(nm)
-        spqr_meta.package = nm
-      end
-
-      def other.spqr_class(nm)
-        spqr_meta.classname = nm
-      end
-
-      def other.spqr_description(d)
-        spqr_meta.description = d
-      end
-
-      def other.spqr_options(opts)
-        spqr_meta.options = opts.dup
-      end      
-
-      def other.spqr_statistic(name, kind, options=nil)
-        spqr_meta.declare_statistic(name, kind, options)
-
-        self.class_eval do
-          # XXX: are we only interested in declaring a reader for
-          # statistics?  Doesn't it really makes more sense for the managed
-          # class to declare a method with the same name as the
-          # statistic so we aren't declaring anything at all here?
-
-          # XXX: should cons up a "safe_attr_reader" method that works
-          # like this:
-          attr_reader name.to_sym unless instance_methods.include? "#{name}"
-          attr_writer name.to_sym unless instance_methods.include? "#{name}="
-        end
-      end
-      
-      def other.spqr_property(name, kind, options=nil)
-        spqr_meta.declare_property(name, kind, options)
-
-        # add a property accessor to instances of other
-        self.class_eval do
-          # XXX: should cons up a "safe_attr_accessor" method that works like this:
-          attr_reader name.to_sym unless instance_methods.include? "#{name}"
-          attr_writer name.to_sym unless instance_methods.include? "#{name}="
-        end
-
-        if options and options[:index]
-          # if this is an index property, add a find-by method if one
-          # does not already exist
-          find_by_prop = "find_by_#{name}".to_sym
-          unless other.respond_to? find_by_prop
-            class << other
-              define_method find_by_prop do |arg|
-                raise "#{self} must define find_by_#{name}(arg)"
-              end
-            end
-          end
-        end
+      class << other
+        include ManageableClassMixins
       end
 
       unless other.respond_to? :find_by_id

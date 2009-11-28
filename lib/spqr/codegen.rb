@@ -167,6 +167,9 @@ module SPQR
 
     private
     def gen_class
+      pp "require 'spqr/spqr'"
+      pp ""
+      
       @package_list.map {|pkg| pkg.capitalize}.each do |modname|
         pp "module #{modname}"
         inc_indent
@@ -176,7 +179,7 @@ module SPQR
         pkgname = (@package_list.map {|pkg| pkg.capitalize}).join("::")
         fqcn = ("#{pkgname}::#{@sc.name}" if pkgname) or @sc.name
 
-        pp "include SPQR::Manageable"
+        pp "include ::SPQR::Manageable"
         pp ""
 
         pp "spqr_package '#{@package_list.join(".")}'"
