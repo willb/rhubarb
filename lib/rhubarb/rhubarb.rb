@@ -181,6 +181,11 @@ SELECT __freshest.* FROM (
     Persistence::execute(query, query_params).map {|tup| self.new(tup) }
   end
 
+  # Does what it says on the tin.  Since this will allocate an object for each row, it isn't recomended for huge tables.
+  def find_all
+    Persistence::execute("SELECT * from #{table_name}").map {|tup| self.new(tup)}
+  end
+
   # Declares a query method named +name+ and adds it to this class.  The query method returns a list of objects corresponding to the rows returned by executing "+SELECT * FROM+ _table_ +WHERE+ _query_" on the database.
   def declare_query(name, query)
     klass = (class << self; self end)
