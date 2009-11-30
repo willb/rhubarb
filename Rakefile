@@ -18,6 +18,18 @@ rescue LoadError
   puts "Jeweler (or a dependency) not available. Install it with: gem install jeweler"
 end
 
+desc "create an RPM spec file"
+task :rpmspec => :release do
+  version = File.exist?('VERSION') ? File.read('VERSION') : ""
+  sh "gem2rpm -t spqr.spec.in -o spqr.spec pkg/spqr-#{version}.gem"
+end
+
+desc "create a source RPM"
+task :srpm => :release do
+  version = File.exist?('VERSION') ? File.read('VERSION') : ""
+  sh "gem2rpm -t spqr.spec.in -s pkg/spqr-#{version}.gem"
+end
+
 require 'spec/rake/spectask'
 Spec::Rake::SpecTask.new(:spec) do |spec|
   spec.libs << 'lib' << 'spec'
