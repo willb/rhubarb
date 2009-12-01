@@ -16,12 +16,23 @@ require 'spqr/spqr'
 require 'qmf'
 require 'logger'
 
+module Qmf
+  class Agent
+    alias orig_conn_event_connected conn_event_connected
+    
+    def conn_event_connected()
+      orig_conn_event_connected
+      @handler.agent_ready if @handler.respond_to? :agent_ready
+    end
+  end
+end
+
 module SPQR
   class App < Qmf::AgentHandler
     class ClassMeta < Struct.new(:object_class, :schema_class) ; end
 
     def initialize(options=nil)
-      defaults = {:logfile=>STDERR, :loglevel=>Logger::WARN}
+      defaults = {:logfile=>STDERR, :loglevel=>Logger::WARN, :notifier=>nil}
       
       # convenient shorthands for log levels
       loglevels = {:debug => Logger::DEBUG, :info => Logger::INFO, :warn => Logger::WARN, :error => Logger::ERROR, :fatal => Logger::FATAL}
@@ -43,6 +54,8 @@ module SPQR
 
       @classes_by_name = {}
       @classes_by_id = {}
+      @pipe = options[:notifier]
+      @app_name = options[:appname] or ""
     end
 
     def register(*ks)
@@ -99,6 +112,14 @@ module SPQR
       end
     end
 
+    def agent_ready
+      # notify a (parent) process that is waiting for this setup to complete
+      if @pipe
+        @pipe.write_nonblock "SPQR is ready."
+        @pipe.close
+      end
+    end
+
     def get_query(context, query, user_id)
       @log.debug "query: user=#{user_id} context=#{context} class=#{query.class_name} object_num=#{query.object_id.object_num_low if query.object_id} details=#{query}"
 
@@ -150,6 +171,7 @@ module SPQR
       end
       
       @log.debug("entering orbit....")
+
       sleep
     end
 
