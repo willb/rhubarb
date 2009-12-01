@@ -4,18 +4,18 @@ require 'qmf'
 class QmfHello
   include ::SPQR::Manageable
 
+  def QmfHello.find_by_id(oid)
+    @@qmf_hellos ||= [QmfHello.new]
+    @@qmf_hellos[0]
+  end
+  
+  def QmfHello.find_all
+    @@qmf_hellos ||= [QmfHello.new]
+    @@qmf_hellos
+  end
+
   def hello(args)
     args["result"] = "Hello, #{args['name']}!"
-  end
-
-  def self.find_by_id(oid)
-    @@singleton ||= QmfHello.new
-    @@singleton
-  end
-
-  def self.find_all
-    @@singleton ||= QmfHello.new
-    [@@singleton]
   end
 
   spqr_expose :hello do |args|
@@ -27,11 +27,44 @@ class QmfHello
   spqr_class :QmfHello
 end
 
+class QmfClicker
+   include ::SPQR::Manageable
+
+   def QmfClicker.find_by_id(oid)
+     @singleton ||= QmfClicker.new
+     @singleton
+   end
+  
+   def QmfClicker.find_all
+     @singleton ||= QmfClicker.new
+     [@singleton]
+   end
+
+   def initialize
+     @clicks = 0
+   end
+
+   def click(args)
+     @clicks = @clicks.succ
+   end
+  
+   spqr_expose :click do |args| 
+   end
+
+   spqr_statistic :clicks, :int
+
+   spqr_package :example
+   spqr_class :QmfClicker
+ end
+
 module QmfTestHelpers
   def app_setup(*classes)
-    @app = SPQR::App.new(:loglevel => :fatal)
+    pr, pw = IO.pipe
+    @app = SPQR::App.new(:loglevel => :fatal, :notifier => pw)
     @app.register *classes
     @child_pid = fork do 
+      pr.close
+
       # replace stdin/stdout/stderr
       $stdin.reopen("/dev/null", "r")
       $stdout.reopen("/dev/null", "w")
@@ -39,17 +72,21 @@ module QmfTestHelpers
 
       @app.main
     end
-    
-    sleep 1
-    @connection = Qmf::Connection.new(Qmf::ConnectionSettings.new)
-    @console = Qmf::Console.new
-    @broker = @console.add_connection(@connection)
-    @broker.wait_for_stable
+
+    sleep 0.25
+
+    pw.close
+    pr.read
+
+    $connection = Qmf::Connection.new(Qmf::ConnectionSettings.new) unless $connection
+    $console = Qmf::Console.new unless $console
+    $broker = $console.add_connection($connection) unless $broker
+
+    $broker.wait_for_stable
   end
 
   def teardown
-    @connection = nil
-    Process.kill(1, @child_pid) if @child_pid
+    Process.kill(9, @child_pid) if @child_pid
   end
 end
 
@@ -59,16 +96,16 @@ class TestSpqr < Test::Unit::TestCase
   def setup
     @child_pid = nil
   end
-  
+
   def test_hello_objects
     app_setup QmfHello
-    objs = @console.objects(:class=>"QmfHello")
+    objs = $console.objects(:class=>"QmfHello")
     assert objs.size > 0
   end
 
   def test_hello_call
     app_setup QmfHello
-    obj = @console.objects(:class=>"QmfHello")[0]
+    obj = $console.objects(:class=>"QmfHello")[0]
     
     val = obj.hello("ruby").result
     args = { 'name' => 'ruby' }
@@ -78,4 +115,23 @@ class TestSpqr < Test::Unit::TestCase
 
     assert_equal expected, val
   end
+
+  def test_no_param_method
+    app_setup QmfClicker
+
+    assert_nothing_raised do
+      obj = $console.objects(:class=>"QmfClicker")[0]
+      
+      obj.click({})
+    end
+  end
+
+  def test_statistics_empty
+    app_setup QmfClicker
+
+    obj = $console.objects(:class=>"QmfClicker")[0]
+    assert_equal "clicks", obj.statistics[0][0].name
+    assert_equal 0, obj[:clicks]
+  end
+
 end
