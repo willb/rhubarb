@@ -115,7 +115,7 @@ module SPQR
     def agent_ready
       # notify a (parent) process that is waiting for this setup to complete
       if @pipe
-        @pipe.write_nonblock "SPQR is ready."
+        @pipe.write "SPQR is ready."
         @pipe.close
       end
     end
