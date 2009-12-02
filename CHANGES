@@ -1,0 +1,20 @@
+version 0.0.3  (060c7b5bcaa2711b3e3ce511c9c3ecaa59bf0de8)
+
+*  Agent-ready callback and parent-process notification (app.rb)
+*  The beginnings of an SPQR test suite
+
+version 0.0.2  (ecd94b141307c5f0f141833836ea686854cfda9c)
+
+*  First shaky pass at automated RPM packaging (see rpmspec and
+   srpm rake targets)
+*  Automatic find_all methods for Rhubarb persisting classes
+
+version 0.0.1  (0714a87f30469772fc302515e95576e329f7deb9)
+
+*  Gem support
+*  Codegen fixes
+
+version 0.0.0  (bbbc2e9d6983f773f6d093a821a0e635714ea869)
+
+*  Initial numbered release; corresponds roughly to the functionality
+   from the "Introducing SPQR" blog posts, but with an added Rakefile.
