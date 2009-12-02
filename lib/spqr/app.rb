@@ -16,6 +16,7 @@ require 'spqr/spqr'
 require 'qmf'
 require 'logger'
 
+# Patch this class to provide an agent-ready callback
 module Qmf
   class Agent
     alias orig_conn_event_connected conn_event_connected
