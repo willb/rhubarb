@@ -271,4 +271,15 @@ class TestSpqr < Test::Unit::TestCase
       assert ids.include?(x), "ids should include #{x}, which is less than #{objs.size}"
     end
   end
+
+  def test_find_objs
+    app_setup QmfIntegerProp
+
+    sz = QmfIntegerProp::SIZE
+
+    sz.times do |x|
+      obj = $console.objects(:class=>"QmfIntegerProp", 'int_id'=>x)[0]
+      assert_equal x, obj[:int_id]
+    end
+  end
 end
