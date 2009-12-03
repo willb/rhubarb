@@ -34,6 +34,10 @@ class QmfIntegerProp
   def initialize(oid)
     @int_id = oid
   end
+
+  def spqr_object_id
+    @int_id
+  end
   
   def QmfIntegerProp.gen_objects(ct)
     objs = []
@@ -52,7 +56,15 @@ class QmfIntegerProp
     @qmf_ips ||= gen_objects SIZE
     @qmf_ips
   end
+
+  def next(args)
+    args['result'] = QmfIntegerProp.find_by_id((oid + 1) % QmfIntegerProp::SIZE)
+  end
   
+  spqr_expose :next do |args|
+    args.declare :result, :objId, :out
+  end
+
   spqr_property :int_id, :int
 
   spqr_class :QmfIntegerProp
@@ -184,6 +196,18 @@ class TestSpqr < Test::Unit::TestCase
       obj = $console.objects(:class=>"QmfClicker")[0]
       
       obj.click({})
+    end
+  end
+
+  def test_reference_returning_method
+    app_setup QmfIntegerProp
+    
+    objs = $console.objects(:class=>"QmfIntegerProp")
+    
+    objs.size.times do |x|
+      expected = objs[(x + 1) % QmfIntegerProp::SIZE]
+      actual = objs[x].next.result
+      assert_equal expected, actual
     end
   end
 
