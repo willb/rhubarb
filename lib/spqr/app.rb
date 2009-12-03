@@ -16,18 +16,6 @@ require 'spqr/spqr'
 require 'qmf'
 require 'logger'
 
-# Patch this class to provide an agent-ready callback
-module Qmf
-  class Agent
-    alias orig_conn_event_connected conn_event_connected
-    
-    def conn_event_connected()
-      orig_conn_event_connected
-      @handler.agent_ready if @handler.respond_to? :agent_ready
-    end
-  end
-end
-
 module SPQR
   class App < Qmf::AgentHandler
     class ClassMeta < Struct.new(:object_class, :schema_class) ; end
@@ -110,14 +98,6 @@ module SPQR
         @log.error "Error calling #{name}: #{ex}"
         @log.error "    " + ex.backtrace.join("\n    ")
         @agent.method_response(context, 1, "ERROR: #{ex}", args)
-      end
-    end
-
-    def agent_ready
-      # notify a (parent) process that is waiting for this setup to complete
-      if @pipe
-        @pipe.write "SPQR is ready."
-        @pipe.close
       end
     end
 
