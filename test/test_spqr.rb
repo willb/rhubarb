@@ -128,28 +128,33 @@ class QmfClicker
 end
 
 module QmfTestHelpers
+  DEBUG = false
+  
   def app_setup(*classes)
     $connection = Qmf::Connection.new(Qmf::ConnectionSettings.new) unless $connection
     $console = Qmf::Console.new unless $console
     $broker = $console.add_connection($connection) unless $broker
 
-    $broker.wait_for_stable
-
     pr, pw = IO.pipe
-    @app = SPQR::App.new(:loglevel => :fatal, :notifier => pw)
+    
+    @app = SPQR::App.new(:loglevel => DEBUG ? :debug : :fatal, :notifier => pw)
     @app.register *classes
     @child_pid = fork do 
       pr.close
 
-      # replace stdin/stdout/stderr
-      $stdin.reopen("/dev/null", "r")
-      $stdout.reopen("/dev/null", "w")
-      $stderr.reopen("/dev/null", "w")
+      unless DEBUG
+        # replace stdin/stdout/stderr
+        $stdin.reopen("/dev/null", "r")
+        $stdout.reopen("/dev/null", "w")
+        $stderr.reopen("/dev/null", "w")
+      end
 
       @app.main
     end
 
     sleep 0.35
+
+    $broker.wait_for_stable
 
     Timeout.timeout(15) do
       pw.close
