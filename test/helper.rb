@@ -52,16 +52,16 @@ module QmfTestHelpers
     
     $broker.wait_for_stable
 
-    Timeout.timeout(3) do
+    Timeout.timeout(5) do
       k = ""
       begin
         ag = $notify_handler.queue.pop
         k = ag.key
         puts "GOT A KEY:  #{k}" if DEBUG
       end until k != "1.0"
+      sleep 0.35
       puts "ESCAPING FROM TIMEOUT" if DEBUG
     end
-
 
   end
 
