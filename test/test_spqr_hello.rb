@@ -11,13 +11,13 @@ class TestSpqrHello < Test::Unit::TestCase
 
   def test_hello_objects
     app_setup QmfHello
-    objs = $console.objects(:class=>"QmfHello")
+    objs = $console.objects(:class=>"QmfHello", :agent=>@ag)
     assert objs.size > 0
   end
 
   def test_hello_call
     app_setup QmfHello
-    obj = $console.objects(:class=>"QmfHello")[0]
+    obj = $console.objects(:class=>"QmfHello", :agent=>@ag)[0]
     
     val = obj.hello("ruby").result
     args = { 'name' => 'ruby' }

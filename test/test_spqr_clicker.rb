@@ -13,7 +13,7 @@ class TestSpqrClicker < Test::Unit::TestCase
     app_setup QmfClicker
 
     assert_nothing_raised do
-      obj = $console.objects(:class=>"QmfClicker")[0]
+      obj = $console.objects(:class=>"QmfClicker", :agent=>@ag)[0]
       
       obj.click({})
     end
@@ -22,7 +22,7 @@ class TestSpqrClicker < Test::Unit::TestCase
   def test_statistics_empty
     app_setup QmfClicker
 
-    obj = $console.objects(:class=>"QmfClicker")[0]
+    obj = $console.objects(:class=>"QmfClicker", :agent=>@ag)[0]
     assert_equal "clicks", obj.statistics[0][0].name
     assert_equal 0, obj[:clicks]
   end
@@ -33,7 +33,7 @@ class TestSpqrClicker < Test::Unit::TestCase
     x = 0
     
     9.times do
-      obj = $console.objects(:class=>"QmfClicker")[0]
+      obj = $console.objects(:class=>"QmfClicker", :agent=>@ag)[0]
       assert_equal x, obj[:clicks]
       
       obj.click({})
@@ -45,7 +45,7 @@ class TestSpqrClicker < Test::Unit::TestCase
     app_setup QmfClicker
 
     x = 0
-    obj = $console.objects(:class=>"QmfClicker")[0]
+    obj = $console.objects(:class=>"QmfClicker", :agent=>@ag)[0]
     
     9.times do
       obj.update

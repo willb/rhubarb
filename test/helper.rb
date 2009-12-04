@@ -55,11 +55,13 @@ module QmfTestHelpers
     Timeout.timeout(5) do
       k = ""
       begin
-        ag = $notify_handler.queue.pop
-        k = ag.key
+        @ag = $notify_handler.queue.pop
+        k = @ag.key
         puts "GOT A KEY:  #{k}" if DEBUG
       end until k != "1.0"
-      sleep 0.35
+
+      # XXX
+      sleep 0.45
       puts "ESCAPING FROM TIMEOUT" if DEBUG
     end
 

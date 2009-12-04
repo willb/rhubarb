@@ -12,7 +12,7 @@ class TestSpqrDummyProp < Test::Unit::TestCase
   def test_property_basic
     app_setup QmfDummyProp
 
-    obj = $console.objects(:class=>"QmfDummyProp")[0]
+    obj = $console.objects(:class=>"QmfDummyProp", :agent=>@ag)[0]
     assert_equal "DummyPropService", obj[:service_name]
   end
 end
