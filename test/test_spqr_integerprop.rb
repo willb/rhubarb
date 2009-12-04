@@ -1,50 +1,6 @@
 require 'helper'
 require 'set'
-
-class QmfIntegerProp
-  include ::SPQR::Manageable 
-
-  SIZE = 12
- 
-  def initialize(oid)
-    @int_id = oid
-  end
-
-  def spqr_object_id
-    @int_id
-  end
-  
-  def QmfIntegerProp.gen_objects(ct)
-    objs = []
-    ct.times do |x|
-      objs << (new(x))
-    end
-    objs
-  end
-
-  def QmfIntegerProp.find_by_id(oid)
-    @qmf_ips ||= gen_objects SIZE
-    @qmf_ips[oid]
-  end
-  
-  def QmfIntegerProp.find_all
-    @qmf_ips ||= gen_objects SIZE
-    @qmf_ips
-  end
-
-  def next(args)
-    args['result'] = QmfIntegerProp.find_by_id((oid + 1) % QmfIntegerProp::SIZE)
-  end
-  
-  spqr_expose :next do |args|
-    args.declare :result, :objId, :out
-  end
-
-  spqr_property :int_id, :int
-
-  spqr_class :QmfIntegerProp
-  spqr_package :example
-end
+require 'example-apps'
 
 class TestSpqrIntegerProp < Test::Unit::TestCase
   include QmfTestHelpers

@@ -1,36 +1,6 @@
 require 'helper'
 require 'set'
-
-class QmfClicker
-  include ::SPQR::Manageable
-  
-  def QmfClicker.find_by_id(oid)
-    @singleton ||= QmfClicker.new
-    @singleton
-  end
-  
-  def QmfClicker.find_all
-    @singleton ||= QmfClicker.new
-    [@singleton]
-  end
-  
-  def initialize
-    @clicks = 0
-  end
-  
-  def click(args)
-    @clicks = @clicks.succ
-  end
-  
-  spqr_expose :click do |args| 
-  end
-  
-  spqr_statistic :clicks, :int
-  
-  spqr_package :example
-  spqr_class :QmfClicker
-end
-
+require 'example-apps'
 
 class TestSpqrClicker < Test::Unit::TestCase
   include QmfTestHelpers

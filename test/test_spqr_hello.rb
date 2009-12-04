@@ -1,31 +1,6 @@
 require 'helper'
 require 'set'
-
-class QmfHello
-  include ::SPQR::Manageable
-  
-  def QmfHello.find_by_id(oid)
-    @qmf_hellos ||= [QmfHello.new]
-    @qmf_hellos[0]
-  end
-  
-  def QmfHello.find_all
-    @qmf_hellos ||= [QmfHello.new]
-    @qmf_hellos
-  end
-
-  def hello(args)
-    args["result"] = "Hello, #{args['name']}!"
-  end
-
-  spqr_expose :hello do |args|
-    args.declare :name, :lstr, :in
-    args.declare :result, :lstr, :out
-  end
-  
-  spqr_package :example
-  spqr_class :QmfHello
-end
+require 'example-apps'
 
 class TestSpqrHello < Test::Unit::TestCase
   include QmfTestHelpers
