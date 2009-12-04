@@ -24,7 +24,7 @@ module QmfTestHelpers
     end
 
     def agent_added(agent)
-      # puts "GOT AN AGENT:  #{agent}"
+      puts "GOT AN AGENT:  #{agent}" if DEBUG
       @q << agent
     end
   end
@@ -37,7 +37,7 @@ module QmfTestHelpers
       $broker = $console.add_connection($connection)
     end
       
-    @app = SPQR::App.new(:loglevel => DEBUG ? :debug : :fatal)
+    @app = SPQR::App.new(:loglevel => (DEBUG ? :debug : :fatal))
     @app.register *classes
     @child_pid = fork do 
       unless DEBUG
@@ -57,8 +57,9 @@ module QmfTestHelpers
       begin
         ag = $notify_handler.queue.pop
         k = ag.key
-        # puts "GOT A KEY:  #{k}"
+        puts "GOT A KEY:  #{k}" if DEBUG
       end until k != "1.0"
+      puts "ESCAPING FROM TIMEOUT" if DEBUG
     end
 
 
