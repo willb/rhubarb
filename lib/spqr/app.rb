@@ -44,7 +44,8 @@ module SPQR
       @classes_by_name = {}
       @classes_by_id = {}
       @pipe = options[:notifier]
-      @app_name = options[:appname] or ""
+      @app_name = (options[:appname] or "SPQR application")
+
     end
 
     def register(*ks)
@@ -138,8 +139,9 @@ module SPQR
       
       @connection = Qmf::Connection.new(settings)
       @log.debug(" +-- @connection created:  #{@connection}")
+      @log.debug(" +-- app name is '#{@app_name}'")
 
-      @agent = Qmf::Agent.new(self)
+      @agent = Qmf::Agent.new(self, @app_name)
       @log.debug(" +-- @agent created:  #{@agent}")
 
       @agent.set_connection(@connection)
