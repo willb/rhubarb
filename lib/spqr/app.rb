@@ -16,18 +16,6 @@ require 'spqr/spqr'
 require 'qmf'
 require 'logger'
 
-# Patch this class to provide an agent-ready callback
-module Qmf
-  class Agent
-    alias orig_conn_event_connected conn_event_connected
-    
-    def conn_event_connected()
-      orig_conn_event_connected
-      @handler.agent_ready if @handler.respond_to? :agent_ready
-    end
-  end
-end
-
 module SPQR
   class App < Qmf::AgentHandler
     class ClassMeta < Struct.new(:object_class, :schema_class) ; end
@@ -56,7 +44,8 @@ module SPQR
       @classes_by_name = {}
       @classes_by_id = {}
       @pipe = options[:notifier]
-      @app_name = options[:appname] or ""
+      @app_name = (options[:appname] or "SPQR application")
+
     end
 
     def register(*ks)
@@ -113,14 +102,6 @@ module SPQR
       end
     end
 
-    def agent_ready
-      # notify a (parent) process that is waiting for this setup to complete
-      if @pipe
-        @pipe.write "SPQR is ready."
-        @pipe.close
-      end
-    end
-
     def get_query(context, query, user_id)
       @log.debug "query: user=#{user_id} context=#{context} class=#{query.class_name} object_num=#{query.object_id.object_num_low if query.object_id} details=#{query}"
 
@@ -158,8 +139,9 @@ module SPQR
       
       @connection = Qmf::Connection.new(settings)
       @log.debug(" +-- @connection created:  #{@connection}")
+      @log.debug(" +-- app name is '#{@app_name}'")
 
-      @agent = Qmf::Agent.new(self)
+      @agent = Qmf::Agent.new(self, @app_name)
       @log.debug(" +-- @agent created:  #{@agent}")
 
       @agent.set_connection(@connection)
