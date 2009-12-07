@@ -103,7 +103,7 @@ module SPQR
     end
 
     def get_query(context, query, user_id)
-      @log.debug "query: user=#{user_id} context=#{context} class=#{query.class_name} object_num=#{query.object_id.object_num_low if query.object_id} details=#{query}"
+      @log.debug "query: user=#{user_id} context=#{context} class=#{query.class_name} object_num=#{query.object_id.object_num_low if query.object_id} details=#{query} haveSelect=#{query.impl and query.impl.haveSelect} getSelect=#{query.impl and query.impl.getSelect} (#{query.impl and query.impl.getSelect and query.impl.getSelect.methods.inspect})"
 
       cmeta = @classes_by_name[query.class_name]
       objs = []
