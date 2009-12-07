@@ -1,3 +1,9 @@
+version 0.0.4  (180897a77b55400b31d364a08cb9f81c423eb59f)
+
+*  Test suite is mainly stable (individual tests will sometimes hang
+   upon creating a QMF agent).
+*  This is probably the last version before I change the method call API.
+
 version 0.0.3  (060c7b5bcaa2711b3e3ce511c9c3ecaa59bf0de8)
 
 *  Agent-ready callback and parent-process notification (app.rb)
