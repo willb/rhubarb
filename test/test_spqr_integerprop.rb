@@ -16,8 +16,8 @@ class TestSpqrIntegerProp < Test::Unit::TestCase
     
     objs.size.times do |x|
       expected = objs[(x + 1) % QmfIntegerProp::SIZE]
-      actual = objs[x].next.result
-      assert_equal expected, actual
+      actual = $console.object(:object_id=>objs[x].next.result)
+      assert_equal expected.int_id, actual.int_id
     end
   end
 

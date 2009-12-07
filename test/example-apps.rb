@@ -100,24 +100,24 @@ class QmfIntegerProp
   end
 
   def QmfIntegerProp.find_by_id(oid)
-    @qmf_ips ||= gen_objects SIZE
+    @qmf_ips ||= gen_objects(SIZE)
     @qmf_ips[oid]
   end
   
   def QmfIntegerProp.find_all
-    @qmf_ips ||= gen_objects SIZE
+    @qmf_ips ||= gen_objects(SIZE)
     @qmf_ips
   end
 
   def next(args)
-    args['result'] = QmfIntegerProp.find_by_id((oid + 1) % QmfIntegerProp::SIZE)
+    args['result'] = QmfIntegerProp.find_by_id((@int_id + 1) % QmfIntegerProp::SIZE)
   end
   
   spqr_expose :next do |args|
     args.declare :result, :objId, :out
   end
 
-  spqr_property :int_id, :int
+  spqr_property :int_id, :int, :index=>true
 
   spqr_class :QmfIntegerProp
   spqr_package :example
