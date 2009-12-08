@@ -190,7 +190,9 @@ module SPQR
           pp "#{@sc.name}.new"
         end
 
-        pp "\n# Find-all method (NB:  you must implement this)"
+        pp ""
+
+        pp '# Find-all method (NB:  you must implement this)'
         pp_decl :def, "#{@sc.name}.find_all" do
           pp "[#{@sc.name}.new]"
         end
