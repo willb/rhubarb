@@ -11,7 +11,7 @@ class Hello
      args["result"] = "Hello, #{args['name']}!"
     end
 
-   spqr_expose :hello do |args|
+   expose :hello do |args|
      args.declare :name, :lstr, :in
      args.declare :result, :lstr, :out
    end
@@ -21,10 +21,10 @@ class Hello
      @service_name = "HelloAgent"
    end
 
-   spqr_package :hello
-   spqr_class :Hello
-   spqr_statistic :people_greeted, :int
-   spqr_property :service_name, :lstr
+   qmf_package_name :hello
+   qmf_class_name :Hello
+   qmf_statistic :people_greeted, :int
+   qmf_property :service_name, :lstr
    
    # These should return the same object for the lifetime of the agent
    # app, since this example has no persistent objects.

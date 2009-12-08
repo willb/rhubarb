@@ -182,8 +182,8 @@ module SPQR
         pp "include ::SPQR::Manageable"
         pp ""
 
-        pp "spqr_package '#{@package_list.join(".")}'"
-        pp "spqr_class '#{@sc.name.split("::")[-1]}'"
+        pp "qmf_package_name '#{@package_list.join(".")}'"
+        pp "qmf_class_name '#{@sc.name.split("::")[-1]}'"
 
         pp '# Find method (NB:  you must implement this)'
         pp_decl :def, "#{@sc.name}.find_by_id", "(objid)" do
@@ -237,7 +237,7 @@ module SPQR
       property.options[:desc] = property.desc if property.desc
 
       pp ""
-      pp "spqr_property #{property.name.to_sym.inspect}, #{property.kind.to_sym.inspect}, #{property.options.inspect.gsub(/[{}]/, '')}"
+      pp "qmf_property #{property.name.to_sym.inspect}, #{property.kind.to_sym.inspect}, #{property.options.inspect.gsub(/[{}]/, '')}"
     end
 
     def gen_statistic(statistic)
@@ -251,7 +251,7 @@ module SPQR
       statistic.options[:desc] = statistic.desc if statistic.desc
       
       pp ""
-      pp "spqr_property #{statistic.name.to_sym.inspect}, #{statistic.kind.to_sym.inspect}, #{statistic.options.inspect.gsub(/[{}]/, '')}"
+      pp "qmf_property #{statistic.name.to_sym.inspect}, #{statistic.kind.to_sym.inspect}, #{statistic.options.inspect.gsub(/[{}]/, '')}"
     end
 
     def gen_method(method)
@@ -304,7 +304,7 @@ module SPQR
 
 
       pp ""
-      pp_decl :spqr_expose, "#{method.name.to_sym.inspect} do |args|" do
+      pp_decl :expose, "#{method.name.to_sym.inspect} do |args|" do
         {:in => in_params, :inout => inout_params, :out => out_params}.each do |dir,coll|
           coll.each do |arg|
             arg_nm = arg.name

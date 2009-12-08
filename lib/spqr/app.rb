@@ -56,7 +56,7 @@ module SPQR
         
         schemaclass = schematize(klass)
 
-        klass.spqr_logger = @log
+        klass.log = @log
 
         @classes_by_id[klass.class_id] = klass
         @classes_by_name[klass.name] = ClassMeta.new(klass, schemaclass)

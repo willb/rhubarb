@@ -35,7 +35,7 @@ class LogService
       args['result'] = LogRecord.create(:l_when=>Time.now.to_i, :severity=>"#{name.to_s.upcase}", :msg=>args['msg'].dup)
     end
     
-    spqr_expose name do |args|
+    expose name do |args|
       args.declare :msg, :lstr, :in
       args.declare :result, :objId, :out
     end
@@ -50,8 +50,8 @@ class LogService
     @@singleton ||= LogService.new
   end
 
-  spqr_package :examples
-  spqr_class :LogService
+  qmf_package_name :examples
+  qmf_class_name :LogService
 end
 
 class LogRecord
@@ -65,12 +65,12 @@ class LogRecord
   # XXX: rhubarb should create a find_all by default
   declare_query :find_all, "1"
 
-  spqr_property :l_when, :uint
-  spqr_property :severity, :lstr
-  spqr_property :msg, :lstr
+  qmf_property :l_when, :uint
+  qmf_property :severity, :lstr
+  qmf_property :msg, :lstr
 
-  spqr_package :examples
-  spqr_class :LogRecord
+  qmf_package_name :examples
+  qmf_class_name :LogRecord
 
   def spqr_object_id
     row_id
