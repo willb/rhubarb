@@ -1,3 +1,12 @@
+*  Exposed methods now use idiomatic parameter-passing style: input
+   (and in/out) parameters are passed in to methods by name (in the
+   order that they appear in the expose declaration), and output (and
+   in/out) values are returned in a list via a standard return
+   statement.  (Again, the order of output and in/out parameters is
+   specified by the order that they appear in the expose declaration.)
+
+*  Changed mixed-in method names from Manageable.
+
 version 0.0.4  (180897a77b55400b31d364a08cb9f81c423eb59f)
 
 *  Test suite is mainly stable (individual tests will sometimes hang
