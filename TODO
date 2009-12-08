@@ -6,8 +6,6 @@ To do, overall:
 To do for spqr:
 
 ! Event support
-! Update examples for new parameter-passing mechanism
-! Update codegen for new parameter-passing mechanism
 * Broader query support (partially done)
 * Documentation
 * Test suite (partially done)
