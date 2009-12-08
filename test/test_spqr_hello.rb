@@ -18,12 +18,9 @@ class TestSpqrHello < Test::Unit::TestCase
   def test_hello_call
     app_setup QmfHello
     obj = $console.objects(:class=>"QmfHello", :agent=>@ag)[0]
-    
     val = obj.hello("ruby").result
-    args = { 'name' => 'ruby' }
-    QmfHello.find_by_id(0).hello(args)
 
-    expected = args['result']
+    expected = QmfHello.find_by_id(0).hello("ruby")
 
     assert_equal expected, val
   end
