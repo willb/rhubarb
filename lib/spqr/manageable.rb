@@ -97,36 +97,36 @@ module SPQR
       @spqr_meta ||= ::SPQR::ManageableMeta.new
     end
     
-    def spqr_logger=(logger)
+    def log=(logger)
       @spqr_log = logger
     end
     
-    def spqr_logger
+    def log
       @spqr_log || ::SPQR::Sink.new
     end
     
     # Exposes a method to QMF
-    def spqr_expose(name, description=nil, options=nil, &blk)
+    def expose(name, description=nil, options=nil, &blk)
       spqr_meta.declare_method(name, description, options, blk)
     end      
     
-    def spqr_package(nm)
+    def qmf_package_name(nm)
       spqr_meta.package = nm
     end
     
-    def spqr_class(nm)
+    def qmf_class_name(nm)
       spqr_meta.classname = nm
     end
     
-    def spqr_description(d)
+    def qmf_description(d)
       spqr_meta.description = d
     end
     
-    def spqr_options(opts)
+    def qmf_options(opts)
       spqr_meta.options = opts.dup
     end      
     
-    def spqr_statistic(name, kind, options=nil)
+    def qmf_statistic(name, kind, options=nil)
       spqr_meta.declare_statistic(name, kind, options)
       
       self.class_eval do
@@ -142,7 +142,7 @@ module SPQR
       end
     end
     
-    def spqr_property(name, kind, options=nil)
+    def qmf_property(name, kind, options=nil)
       spqr_meta.declare_property(name, kind, options)
       
       # add a property accessor to instances of other
@@ -188,7 +188,7 @@ module SPQR
     end
 
     def log
-      self.class.spqr_logger
+      self.class.log
     end
 
     def self.included(other)
@@ -216,7 +216,7 @@ module SPQR
         end
       end
 
-      other.spqr_class other.name.to_sym
+      other.qmf_class_name other.name.to_sym
     end
   end
 end
