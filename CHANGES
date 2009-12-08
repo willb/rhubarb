@@ -1,4 +1,9 @@
-*  Code generation now uses idiomatic parameter-passing style.
+version 0.1.0 (3a3ca52c4f086d1f20fdf5ed89dda262622c171d)
+
+*  Note that this version breaks backwards compatibility, for reasons
+   mentioned below.  Most notably, the Manageable API names have changed,
+   and the old-style exposed-method declarations (with hash args) are no
+   longer supported in favor of a more idiomatic style.
 
 *  Exposed methods now use idiomatic parameter-passing style: input
    (and in/out) parameters are passed in to methods by name (in the
@@ -6,6 +11,9 @@
    in/out) values are returned in a list via a standard return
    statement.  (Again, the order of output and in/out parameters is
    specified by the order that they appear in the expose declaration.)
+
+*  Code generation now uses idiomatic parameter-passing style.  Code
+   generation should still be considered "alpha"-quality.
 
 *  Changed mixed-in method names from Manageable.
 
