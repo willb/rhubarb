@@ -15,7 +15,7 @@ class QmfClicker
     @clicks = 0
   end
   
-  def click(args)
+  def click
     @clicks = @clicks.succ
   end
   
