@@ -1,6 +1,6 @@
 To do, overall:
 
-* packaging
+* packaging (partially done)
 
 
 To do for spqr:
@@ -8,12 +8,11 @@ To do for spqr:
 ! Event support
 * Broader query support (partially done)
 * Documentation
-* Test suite
+* Test suite (partially done)
 - Automatic generation of smoke tests for services (either from schema or manageable class)
 - Automatic schema generation from agent apps
 - Usability improvements:
    - Fewer required annotations
-   - Eliminate requirement for kwargs-style methods
    - Automatic decoration of certain methods
 
 

@@ -15,17 +15,17 @@ class QmfClicker
     @clicks = 0
   end
   
-  def click(args)
+  def click
     @clicks = @clicks.succ
   end
   
-  spqr_expose :click do |args| 
+  expose :click do |args| 
   end
   
-  spqr_statistic :clicks, :int
+  qmf_statistic :clicks, :int
   
-  spqr_package :example
-  spqr_class :QmfClicker
+  qmf_package_name :example
+  qmf_class_name :QmfClicker
 end
 
 class QmfHello
@@ -41,17 +41,17 @@ class QmfHello
     @qmf_hellos
   end
 
-  def hello(args)
-    args["result"] = "Hello, #{args['name']}!"
+  def hello(name)
+    "Hello, #{name}!"
   end
 
-  spqr_expose :hello do |args|
+  expose :hello do |args|
     args.declare :name, :lstr, :in
     args.declare :result, :lstr, :out
   end
   
-  spqr_package :example
-  spqr_class :QmfHello
+  qmf_package_name :example
+  qmf_class_name :QmfHello
 end
 
 class QmfDummyProp
@@ -71,10 +71,10 @@ class QmfDummyProp
     "DummyPropService"
   end
   
-  spqr_property :service_name, :lstr
+  qmf_property :service_name, :lstr
 
-  spqr_class :QmfDummyProp
-  spqr_package :example
+  qmf_class_name :QmfDummyProp
+  qmf_package_name :example
 end
 
 
@@ -109,18 +109,18 @@ class QmfIntegerProp
     @qmf_ips
   end
 
-  def next(args)
-    args['result'] = QmfIntegerProp.find_by_id((@int_id + 1) % QmfIntegerProp::SIZE)
+  def next
+    QmfIntegerProp.find_by_id((@int_id + 1) % QmfIntegerProp::SIZE)
   end
   
-  spqr_expose :next do |args|
+  expose :next do |args|
     args.declare :result, :objId, :out
   end
 
-  spqr_property :int_id, :int, :index=>true
+  qmf_property :int_id, :int, :index=>true
 
-  spqr_class :QmfIntegerProp
-  spqr_package :example
+  qmf_class_name :QmfIntegerProp
+  qmf_package_name :example
 end
 
 

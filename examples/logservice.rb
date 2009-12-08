@@ -22,7 +22,6 @@
 # generated log records in that file, and they will persist between
 # invocations.
 
-require 'rubygems'
 require 'spqr/spqr'
 require 'spqr/app'
 require 'rhubarb/rhubarb'
@@ -31,11 +30,11 @@ class LogService
   include SPQR::Manageable
 
   [:debug, :warn, :info, :error].each do |name|
-    define_method name do |args|
-      args['result'] = LogRecord.create(:l_when=>Time.now.to_i, :severity=>"#{name.to_s.upcase}", :msg=>args['msg'].dup)
+    define_method name do |msg|
+      LogRecord.create(:l_when=>Time.now.to_i, :severity=>"#{name.to_s.upcase}", :msg=>msg.dup)
     end
     
-    spqr_expose name do |args|
+    expose name do |args|
       args.declare :msg, :lstr, :in
       args.declare :result, :objId, :out
     end
@@ -50,8 +49,8 @@ class LogService
     @@singleton ||= LogService.new
   end
 
-  spqr_package :examples
-  spqr_class :LogService
+  qmf_package_name :examples
+  qmf_class_name :LogService
 end
 
 class LogRecord
@@ -65,22 +64,23 @@ class LogRecord
   # XXX: rhubarb should create a find_all by default
   declare_query :find_all, "1"
 
-  spqr_property :l_when, :uint
-  spqr_property :severity, :lstr
-  spqr_property :msg, :lstr
+  qmf_property :l_when, :uint
+  qmf_property :severity, :lstr
+  qmf_property :msg, :lstr
 
-  spqr_package :examples
-  spqr_class :LogRecord
+  qmf_package_name :examples
+  qmf_class_name :LogRecord
 
   def spqr_object_id
     row_id
   end
 end
 
-TABLE = ARGV[0] or ":memory:" 
-DO_CREATE = (TABLE == ":memory:" or not File.exist?(TABLE))
+DBLOC = (ARGV[0] or ":memory:")
+puts "storing results to #{DBLOC}"
+DO_CREATE = (DBLOC == ":memory:" or not File.exist?(DBLOC))
 
-Rhubarb::Persistence::open(TABLE)
+Rhubarb::Persistence::open(DBLOC)
 
 LogRecord.create_table if DO_CREATE
 

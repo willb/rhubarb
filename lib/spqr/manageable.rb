@@ -19,16 +19,19 @@ module SPQR
       self.options = (({} unless self.options) or self.options.dup)
       self.statistics = [] unless self.statistics
       self.properties = [] unless self.properties
-      self.mmethods ||= []
+      self.mmethods ||= {}
     end
 
     def declare_method(name, desc, options, blk=nil)
       result = MethodMeta.new name, desc, options
       blk.call(result.args) if blk
-      self.mmethods << result
-      self.mmethods[-1]
+      self.mmethods[name] = result
     end
 
+    def manageable_methods
+      self.mmethods.values
+    end
+    
     def declare_statistic(name, kind, options)
       declare_basic(:statistic, name, kind, options)
     end
@@ -55,6 +58,34 @@ module SPQR
       super *a
       self.options = (({} unless self.options) or self.options.dup)
       self.args = gen_args
+    end
+
+    def formals_in
+      self.args.select {|arg| arg.direction == :in or arg.direction == :inout}.collect{|arg| arg.name.to_s}
+    end
+
+    def formals_out
+      self.args.select {|arg| arg.direction == :inout or arg.direction == :out}.collect{|arg| arg.name.to_s}
+    end
+
+    def types_in
+      self.args.select {|arg| arg.direction == :in or arg.direction == :inout}.collect{|arg| arg.kind.to_s}
+    end
+    
+    def types_out
+      self.args.select {|arg| arg.direction == :inout or arg.direction == :out}.collect{|arg| arg.kind.to_s}
+    end
+
+    def type_of(param)
+      @types_for ||= self.args.inject({}) do |acc,arg| 
+        k = arg.name
+        v = arg.kind.to_s
+        acc[k] = v
+        acc[k.to_s] = v
+        acc
+      end
+      
+      @types_for[param]
     end
 
     private
@@ -97,36 +128,36 @@ module SPQR
       @spqr_meta ||= ::SPQR::ManageableMeta.new
     end
     
-    def spqr_logger=(logger)
+    def log=(logger)
       @spqr_log = logger
     end
     
-    def spqr_logger
+    def log
       @spqr_log || ::SPQR::Sink.new
     end
     
     # Exposes a method to QMF
-    def spqr_expose(name, description=nil, options=nil, &blk)
+    def expose(name, description=nil, options=nil, &blk)
       spqr_meta.declare_method(name, description, options, blk)
     end      
     
-    def spqr_package(nm)
+    def qmf_package_name(nm)
       spqr_meta.package = nm
     end
     
-    def spqr_class(nm)
+    def qmf_class_name(nm)
       spqr_meta.classname = nm
     end
     
-    def spqr_description(d)
+    def qmf_description(d)
       spqr_meta.description = d
     end
     
-    def spqr_options(opts)
+    def qmf_options(opts)
       spqr_meta.options = opts.dup
     end      
     
-    def spqr_statistic(name, kind, options=nil)
+    def qmf_statistic(name, kind, options=nil)
       spqr_meta.declare_statistic(name, kind, options)
       
       self.class_eval do
@@ -142,7 +173,7 @@ module SPQR
       end
     end
     
-    def spqr_property(name, kind, options=nil)
+    def qmf_property(name, kind, options=nil)
       spqr_meta.declare_property(name, kind, options)
       
       # add a property accessor to instances of other
@@ -188,7 +219,7 @@ module SPQR
     end
 
     def log
-      self.class.spqr_logger
+      self.class.log
     end
 
     def self.included(other)
@@ -216,7 +247,7 @@ module SPQR
         end
       end
 
-      other.spqr_class other.name.to_sym
+      other.qmf_class_name other.name.to_sym
     end
   end
 end

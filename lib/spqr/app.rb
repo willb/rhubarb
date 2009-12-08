@@ -56,7 +56,7 @@ module SPQR
         
         schemaclass = schematize(klass)
 
-        klass.spqr_logger = @log
+        klass.log = @log
 
         @classes_by_id[klass.class_id] = klass
         @classes_by_name[klass.name] = ClassMeta.new(klass, schemaclass)
@@ -75,21 +75,41 @@ module SPQR
 
         @log.debug "calling method: context=#{context} method=#{name} object_id=#{obj_id}, args=#{args}, user=#{user_id}"
 
-        # Turn the Qmf::Arguments structure into a proper ruby hash
+        managed_object = find_object(context, class_id, obj_id)
+        @log.debug("managed object is #{managed_object}")
+        managed_method = managed_object.class.spqr_meta.mmethods[name.to_sym]
+
+        raise RuntimeError.new("#{managed_object.class} does not have #{name} exposed as a manageable method; has #{managed_object.class.spqr_meta.mmethods.inspect}") unless managed_method
+
+        # Extract actual parameters from the Qmf::Arguments structure into a proper ruby list
 
         # XXX: consider adding appropriate impl method to Manageable
         # to avoid this little dance
-        hash_args = qmf_arguments_to_hash(args)
+        actuals_in = managed_method.formals_in.inject([]) {|acc,nm| acc << args[nm]}
+        actuals_in = actuals_in[0] if actuals_in.size == 1
 
-        managed_object = find_object(context, class_id, obj_id)
-        @log.debug("managed object is #{managed_object}")
+        @log.debug("managed_object.respond_to? #{managed_method.name.to_sym} ==> #{managed_object.respond_to? managed_method.name.to_sym}")
+        @log.debug("managed_object.class.spqr_meta.mmethods.include? #{name.to_sym} ==> #{managed_object.class.spqr_meta.mmethods.include? name.to_sym}")
+        @log.debug("formals:  #{managed_method.formals_in.inspect}")
+        @log.debug("actuals:  #{actuals_in.inspect}")
 
-        @log.debug("managed_object.respond_to? #{name.to_sym} ==> #{managed_object.respond_to? name.to_sym}")
-        managed_object.send(name.to_sym, hash_args)
+        actuals_out = actuals_in.size > 0 ? managed_object.send(name.to_sym, actuals_in) : managed_object.send(name.to_sym)
+
+        raise RuntimeError.new("#{managed_object.class} did not return the appropriate number of return values; got '#{actuals_out.inspect}', but expected #{managed_method.types_out.inspect}") unless result_valid(actuals_out, managed_method)
         
-        # Copy any out parameters from hash_args from the
+        if managed_method.formals_out.size == 0
+          actuals_out = [] # ignore return value in this case
+        elsif managed_method.formals_out.size == 1
+          actuals_out = [actuals_out] # wrap this up in a list
+        end
+        
+        @log.debug("formals_out == #{managed_method.formals_out.inspect}")
+        @log.debug("actuals_out == #{actuals_out.inspect}")
+
+        # Copy any out parameters from return value to the
         # Qmf::Arguments structure; see XXX above
-        hash_args.each do |k,v|
+        managed_method.formals_out.zip(actuals_out).each do |k,v|
+          @log.debug("fixing up out params:  #{k.inspect} --> #{v.inspect}")
           encoded_val = encode_object(v)
           args[k] = encoded_val
         end
@@ -160,6 +180,10 @@ module SPQR
 
     private
     
+    def result_valid(actuals, mm)
+      (actuals.kind_of?(Array) and mm.formals_out.size == actuals.size) or mm.formals_out.size <= 1
+    end
+    
     def qmf_arguments_to_hash(args)
       result = {}
       args.each do |k,v|
@@ -189,7 +213,7 @@ module SPQR
 
       sc = Qmf::SchemaObjectClass.new(package, classname)
       
-      meta.mmethods.each do |mm|
+      meta.manageable_methods.each do |mm|
         @log.info("+-- creating a QMF schema for method #{mm}")
         m_opts = mm.options
         m_opts[:desc] ||= mm.description if mm.description

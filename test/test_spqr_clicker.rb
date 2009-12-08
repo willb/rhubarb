@@ -15,7 +15,7 @@ class TestSpqrClicker < Test::Unit::TestCase
     assert_nothing_raised do
       obj = $console.objects(:class=>"QmfClicker", :agent=>@ag)[0]
       
-      obj.click({})
+      obj.click
     end
   end
 
@@ -36,7 +36,7 @@ class TestSpqrClicker < Test::Unit::TestCase
       obj = $console.objects(:class=>"QmfClicker", :agent=>@ag)[0]
       assert_equal x, obj[:clicks]
       
-      obj.click({})
+      obj.click
       x = x.succ
     end
   end
@@ -51,7 +51,7 @@ class TestSpqrClicker < Test::Unit::TestCase
       obj.update
       assert_equal x, obj[:clicks]
       
-      obj.click({})
+      obj.click
       x = x.succ
     end
   end
