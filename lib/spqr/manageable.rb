@@ -75,7 +75,19 @@ module SPQR
     def types_out
       self.args.select {|arg| arg.direction == :inout or arg.direction == :out}.collect{|arg| arg.kind.to_s}
     end
-    
+
+    def type_of(param)
+      @types_for ||= self.args.inject({}) do |acc,arg| 
+        k = arg.name
+        v = arg.kind.to_s
+        acc[k] = v
+        acc[k.to_s] = v
+        acc
+      end
+      
+      @types_for[param]
+    end
+
     private
     def gen_args
       result = []
