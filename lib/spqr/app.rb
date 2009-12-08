@@ -103,9 +103,13 @@ module SPQR
           actuals_out = [actuals_out] # wrap this up in a list
         end
         
+        @log.debug("formals_out == #{managed_method.formals_out.inspect}")
+        @log.debug("actuals_out == #{actuals_out.inspect}")
+
         # Copy any out parameters from return value to the
         # Qmf::Arguments structure; see XXX above
         managed_method.formals_out.zip(actuals_out).each do |k,v|
+          @log.debug("fixing up out params:  #{k.inspect} --> #{v.inspect}")
           encoded_val = encode_object(v)
           args[k] = encoded_val
         end
