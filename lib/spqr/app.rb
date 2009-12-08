@@ -86,7 +86,8 @@ module SPQR
         # XXX: consider adding appropriate impl method to Manageable
         # to avoid this little dance
         actuals_in = managed_method.formals_in.inject([]) {|acc,nm| acc << args[nm]}
-        
+        actuals_in = actuals_in[0] if actuals_in.size == 1
+
         @log.debug("managed_object.respond_to? #{managed_method.name.to_sym} ==> #{managed_object.respond_to? managed_method.name.to_sym}")
         @log.debug("managed_object.class.spqr_meta.mmethods.include? #{name.to_sym} ==> #{managed_object.class.spqr_meta.mmethods.include? name.to_sym}")
         @log.debug("formals:  #{managed_method.formals_in.inspect}")
