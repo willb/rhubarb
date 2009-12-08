@@ -15,7 +15,7 @@ class QmfClicker
     @clicks = 0
   end
   
-  def click(args)
+  def click
     @clicks = @clicks.succ
   end
   
@@ -41,8 +41,8 @@ class QmfHello
     @qmf_hellos
   end
 
-  def hello(args)
-    args["result"] = "Hello, #{args['name']}!"
+  def hello(name)
+    "Hello, #{name}!"
   end
 
   expose :hello do |args|
@@ -109,8 +109,8 @@ class QmfIntegerProp
     @qmf_ips
   end
 
-  def next(args)
-    args['result'] = QmfIntegerProp.find_by_id((@int_id + 1) % QmfIntegerProp::SIZE)
+  def next
+    QmfIntegerProp.find_by_id((@int_id + 1) % QmfIntegerProp::SIZE)
   end
   
   expose :next do |args|

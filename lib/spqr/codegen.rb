@@ -190,7 +190,9 @@ module SPQR
           pp "#{@sc.name}.new"
         end
 
-        pp "\n# Find-all method (NB:  you must implement this)"
+        pp ""
+
+        pp '# Find-all method (NB:  you must implement this)'
         pp_decl :def, "#{@sc.name}.find_all" do
           pp "[#{@sc.name}.new]"
         end
@@ -265,8 +267,22 @@ module SPQR
       in_params = method.args.select {|arg| ['in', 'i', 'qmf::dir_in'].include? arg.dir.to_s.downcase }
       out_params = method.args.select {|arg| ['out', 'o', 'qmf::dir_out'].include? arg.dir.to_s.downcase }
       inout_params = method.args.select {|arg| ['inout', 'io', 'qmf::dir_inout'].include? arg.dir.to_s.downcase }
-      
-      pp_decl :def, method.name, "(args)" do
+
+      formals_in = method.args.select {|arg| ['in','i','qmf::dir_in','io','inout','qmf::dir_inout'].include? arg.dir.to_s.downcase}.map{|arg| arg.name}.join(",")
+      formals_out = method.args.select {|arg| ['out','o','qmf::dir_out','io','inout','qmf::dir_inout'].include? arg.dir.to_s.downcase}.map{|arg| arg.name}
+
+      actuals_out = case formals_out.size
+                      when 0 then nil.inspect
+                      when 1 then formals_out[0].to_s
+                    else "[#{formals_out.join(", ")}]"
+                    end
+
+      param_types = method.args.inject({}) do |acc, arg|
+        acc[arg.name.to_s] = arg.kind.to_s
+        acc
+      end
+
+      pp_decl :def, method.name, "(#{formals_in})" do
         
         if in_params.size + inout_params.size > 0  
           what = "in"
@@ -279,8 +295,8 @@ module SPQR
           
           pp "\# Print values of #{what} parameters"
           (in_params + inout_params).each do |arg|
-            argdisplay = arg.name.to_s.inspect
-            pp('log.debug "' + "#{arg.name} => " + '#{args[' + "#{argdisplay}" + ']}"' + " \# #{}")
+            argdisplay = arg.name.to_s
+            pp('log.debug "' + "#{method.name}: #{arg.name} => " + '#{' + "#{argdisplay}" + '}"')
           end
         end
 
@@ -296,9 +312,15 @@ module SPQR
           pp "\# Assign values to #{what} parameters"
 
           (out_params + inout_params).each do |arg|
-            argdisplay = arg.name.to_s.inspect
-            pp "args[#{argdisplay}] = args[#{argdisplay}]"
+            argdisplay = arg.name.to_s
+            argtype = param_types[argdisplay]
+            raise RuntimeError.new("Can't find type for #{argdisplay} in #{param_types.inspect}") unless argtype
+            pp "#{argdisplay} ||= #{default_val(argtype)}"
           end
+
+          pp "\# Return value"
+          pp "return #{actuals_out}"
+
         end
       end
 
@@ -313,6 +335,19 @@ module SPQR
             pp "args.declare :#{arg_nm}, :#{arg_kd}, :#{dir}, #{arg_opts}"
           end
         end
+      end
+    end
+
+    def default_val(ty)
+      case ty
+        when 'array', 'list' then [].inspect
+        when 'bool' then false.inspect
+        when 'double', 'float' then 0.0.inspect
+        when 'absTime', 'deltaTime', 'int16', 'int32', 'int64', 'int', 'int8', 'uint16', 'uint32', 'uint64', 'uint', 'uint8' then 0.inspect
+        when 'lstr', 'string', 'sstr', 'uuid' then "".inspect
+        when 'map' then {}.inspect
+        when 'objId' then nil.inspect
+      else raise RuntimeError.new("Unknown type #{ty.inspect}")
       end
     end
   end

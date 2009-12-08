@@ -19,16 +19,19 @@ module SPQR
       self.options = (({} unless self.options) or self.options.dup)
       self.statistics = [] unless self.statistics
       self.properties = [] unless self.properties
-      self.mmethods ||= []
+      self.mmethods ||= {}
     end
 
     def declare_method(name, desc, options, blk=nil)
       result = MethodMeta.new name, desc, options
       blk.call(result.args) if blk
-      self.mmethods << result
-      self.mmethods[-1]
+      self.mmethods[name] = result
     end
 
+    def manageable_methods
+      self.mmethods.values
+    end
+    
     def declare_statistic(name, kind, options)
       declare_basic(:statistic, name, kind, options)
     end
@@ -55,6 +58,34 @@ module SPQR
       super *a
       self.options = (({} unless self.options) or self.options.dup)
       self.args = gen_args
+    end
+
+    def formals_in
+      self.args.select {|arg| arg.direction == :in or arg.direction == :inout}.collect{|arg| arg.name.to_s}
+    end
+
+    def formals_out
+      self.args.select {|arg| arg.direction == :inout or arg.direction == :out}.collect{|arg| arg.name.to_s}
+    end
+
+    def types_in
+      self.args.select {|arg| arg.direction == :in or arg.direction == :inout}.collect{|arg| arg.kind.to_s}
+    end
+    
+    def types_out
+      self.args.select {|arg| arg.direction == :inout or arg.direction == :out}.collect{|arg| arg.kind.to_s}
+    end
+
+    def type_of(param)
+      @types_for ||= self.args.inject({}) do |acc,arg| 
+        k = arg.name
+        v = arg.kind.to_s
+        acc[k] = v
+        acc[k.to_s] = v
+        acc
+      end
+      
+      @types_for[param]
     end
 
     private

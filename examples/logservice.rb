@@ -22,7 +22,6 @@
 # generated log records in that file, and they will persist between
 # invocations.
 
-require 'rubygems'
 require 'spqr/spqr'
 require 'spqr/app'
 require 'rhubarb/rhubarb'
@@ -31,8 +30,8 @@ class LogService
   include SPQR::Manageable
 
   [:debug, :warn, :info, :error].each do |name|
-    define_method name do |args|
-      args['result'] = LogRecord.create(:l_when=>Time.now.to_i, :severity=>"#{name.to_s.upcase}", :msg=>args['msg'].dup)
+    define_method name do |msg|
+      LogRecord.create(:l_when=>Time.now.to_i, :severity=>"#{name.to_s.upcase}", :msg=>msg.dup)
     end
     
     expose name do |args|
@@ -77,10 +76,11 @@ class LogRecord
   end
 end
 
-TABLE = ARGV[0] or ":memory:" 
-DO_CREATE = (TABLE == ":memory:" or not File.exist?(TABLE))
+DBLOC = (ARGV[0] or ":memory:")
+puts "storing results to #{DBLOC}"
+DO_CREATE = (DBLOC == ":memory:" or not File.exist?(DBLOC))
 
-Rhubarb::Persistence::open(TABLE)
+Rhubarb::Persistence::open(DBLOC)
 
 LogRecord.create_table if DO_CREATE
 
