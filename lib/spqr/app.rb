@@ -52,14 +52,14 @@ module SPQR
       manageable_ks = ks.select {|kl| manageable? kl}
       unmanageable_ks = ks.select {|kl| not manageable? kl}
       manageable_ks.each do |klass|
-        @log.info("SPQR will manage registered class #{klass} (#{klass.name})...")
+        @log.info("SPQR will manage registered class #{klass} (#{klass.spqr_meta.classname})...")
         
         schemaclass = schematize(klass)
 
         klass.log = @log
 
         @classes_by_id[klass.class_id] = klass
-        @classes_by_name[klass.name] = ClassMeta.new(klass, schemaclass)
+        @classes_by_name[klass.spqr_meta.classname] = ClassMeta.new(klass, schemaclass)
       end
       
       unmanageable_ks.each do |klass|
@@ -124,6 +124,8 @@ module SPQR
 
     def get_query(context, query, user_id)
       @log.debug "query: user=#{user_id} context=#{context} class=#{query.class_name} object_num=#{query.object_id.object_num_low if query.object_id} details=#{query} haveSelect=#{query.impl and query.impl.haveSelect} getSelect=#{query.impl and query.impl.getSelect} (#{query.impl and query.impl.getSelect and query.impl.getSelect.methods.inspect})"
+
+      @log.debug "classes_by_name is #{@classes_by_name.inspect}"
 
       cmeta = @classes_by_name[query.class_name]
       objs = []
@@ -204,7 +206,7 @@ module SPQR
     end
     
     def schematize(klass)
-      @log.info("Making a QMF schema for #{klass}")
+      @log.info("Making a QMF schema for #{klass.spqr_meta.classname}")
 
       meta = klass.spqr_meta
       package = meta.package.to_s
@@ -290,7 +292,7 @@ module SPQR
     # turns an instance of a managed object into a QmfObject
     def qmfify(obj)
       @log.debug("trying to qmfify #{obj}:  qmf_oid is #{obj.qmf_oid} and class_id is #{obj.class.class_id}")
-      cm = @classes_by_name[obj.class.name]
+      cm = @classes_by_name[obj.class.spqr_meta.classname]
       return nil unless cm
 
       qmfobj = Qmf::AgentObject.new(cm.schema_class)
