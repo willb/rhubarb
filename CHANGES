@@ -1,3 +1,9 @@
+*  Fixes and cleanups to class- and package-name metadata.  Previously,
+   the app skeleton would fail to find some manageable classes
+   declared in separate Ruby modules.  In addition, the manageable
+   mixin now sets sensible default names for the QMF class and package
+   (when one is not provided within the class declaration).
+
 version 0.1.0 (3a3ca52c4f086d1f20fdf5ed89dda262622c171d)
 
 *  Note that this version breaks backwards compatibility, for reasons

@@ -247,7 +247,9 @@ module SPQR
         end
       end
 
-      other.qmf_class_name other.name.to_sym
+      name_components = other.name.to_s.split("::")
+      other.qmf_class_name name_components.pop
+      other.qmf_package_name name_components.join(".").downcase
     end
   end
 end
