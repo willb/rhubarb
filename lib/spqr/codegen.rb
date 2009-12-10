@@ -179,22 +179,26 @@ module SPQR
         pkgname = (@package_list.map {|pkg| pkg.capitalize}).join("::")
         fqcn = ("#{pkgname}::#{@sc.name}" if pkgname) or @sc.name
 
-        pp "include ::SPQR::Manageable"
-        pp ""
+        pp "include ::SPQR::Manageable\n"
 
+        pp "include ::Rhubarb::Persisting\n" if $DO_RHUBARB
+        
         pp "qmf_package_name '#{@package_list.join(".")}'"
         pp "qmf_class_name '#{@sc.name.split("::")[-1]}'"
 
-        pp '# Find method (NB:  you must implement this)'
-        pp_decl :def, "#{@sc.name}.find_by_id", "(objid)" do
-          pp "#{@sc.name}.new"
-        end
+        unless $DO_RHUBARB
+        
+          pp '# Find method (NB:  you must implement this)'
+          pp_decl :def, "#{@sc.name}.find_by_id", "(objid)" do
+            pp "#{@sc.name}.new"
+          end
 
-        pp ""
-
-        pp '# Find-all method (NB:  you must implement this)'
-        pp_decl :def, "#{@sc.name}.find_all" do
-          pp "[#{@sc.name}.new]"
+          pp ""
+          
+          pp '# Find-all method (NB:  you must implement this)'
+          pp_decl :def, "#{@sc.name}.find_all" do
+            pp "[#{@sc.name}.new]"
+          end
         end
 
         ModelClassGenerator.id_registry[fqcn.hash] = fqcn
@@ -223,19 +227,26 @@ module SPQR
     end
 
     def gen_property(property)
-      pp ""
-      pp "\# property #{property.name} #{property.kind} #{property.desc}"
-      pp_decl :def, "#{property.name}" do
-        pp "log.debug 'Requested property #{property.name}'"
-        pp "nil"
+      pp "\# property #{property.name} #{property.kind} #{property.desc}\n"
+      
+      rhubarb_kind = qmf_to_rhubarb(property.kind)
+
+      if $DO_RHUBARB and rhubarb_kind
+        pp "declare_column :#{property.name}, #{rhubarb_kind}"
+      else
+        pp ""
+        pp_decl :def, "#{property.name}" do
+          pp "log.debug 'Requested property #{property.name}'"
+          pp "nil"
+        end
+        
+        pp ""
+        pp_decl :def, "#{property.name}=", "(val)" do
+          pp "log.debug 'Set property #{property.name} to \#\{val\}'"
+          pp "nil"
+        end
       end
 
-      pp ""
-      pp_decl :def, "#{property.name}=", "(val)" do
-        pp "log.debug 'Set property #{property.name} to \#\{val\}'"
-        pp "nil"
-      end
-      
       property.options[:desc] = property.desc if property.desc
 
       pp ""
@@ -284,7 +295,7 @@ module SPQR
 
           pp "\# Print values of input parameters"
           formals_in.each do |arg|
-            pp('log.debug "' + "#{method.name}: #{arg.name} => " + '#{' + "#{argdisplay}" + '}"')
+            pp('log.debug "' + "#{method.name}: #{arg} => " + '#{' + "#{arg}" + '}"')
           end
         end
 
@@ -331,6 +342,17 @@ module SPQR
         when 'map' then {}.inspect
         when 'objId' then nil.inspect
       else raise RuntimeError.new("Unknown type #{ty.inspect}")
+      end
+    end
+
+    def qmf_to_rhubarb(ty)
+      case ty.downcase
+        when 'bool' then ':boolean'
+        when 'double', 'float' then ':double'
+        when 'absTime', 'deltaTime' then ':timestamp'
+        when 'int16', 'int32', 'int64', 'int', 'int8', 'uint16', 'uint32', 'uint64', 'uint', 'uint8' then ':integer'
+        when 'lstr', 'string', 'sstr' then ':string'
+      else false
       end
     end
   end
