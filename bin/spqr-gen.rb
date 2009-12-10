@@ -18,8 +18,8 @@ $: << File.expand_path(File.dirname(__FILE__))
 require 'spqr/spqr'
 
 def main
-  $WRITEMODE
   $OUTDIR = "."
+  $DO_RHUBARB = false
 
   op = OptionParser.new do |opts|
     opts.banner = "Usage spqr.rb [options] schema-file"
@@ -30,6 +30,10 @@ def main
     
     opts.on("-d", "--output-dir DIR", "directory in which to place generated app and controllers") do |dir|
       $OUTDIR = dir
+    end
+
+    opts.on("-r", "--rhubarb", "enable support for rhubarb in generated code") do
+      $DO_RHUBARB = true
     end
   end
   
