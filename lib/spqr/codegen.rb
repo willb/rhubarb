@@ -261,14 +261,10 @@ module SPQR
       pp "\# #{method.name} #{method.desc}"
       method.args.each do |arg|
         pp "\# * #{arg.name} (#{arg.kind}/#{arg.dir})"
-        pp "\# #{arg.desc}"
+        pp "\#   #{arg.desc}" if arg.desc
       end
       
-      in_params = method.args.select {|arg| ['in', 'i', 'qmf::dir_in'].include? arg.dir.to_s.downcase }
-      out_params = method.args.select {|arg| ['out', 'o', 'qmf::dir_out'].include? arg.dir.to_s.downcase }
-      inout_params = method.args.select {|arg| ['inout', 'io', 'qmf::dir_inout'].include? arg.dir.to_s.downcase }
-
-      formals_in = method.args.select {|arg| ['in','i','qmf::dir_in','io','inout','qmf::dir_inout'].include? arg.dir.to_s.downcase}.map{|arg| arg.name}.join(",")
+      formals_in = method.args.select {|arg| ['in','i','qmf::dir_in','io','inout','qmf::dir_inout'].include? arg.dir.to_s.downcase}.map{|arg| arg.name}
       formals_out = method.args.select {|arg| ['out','o','qmf::dir_out','io','inout','qmf::dir_inout'].include? arg.dir.to_s.downcase}.map{|arg| arg.name}
 
       actuals_out = case formals_out.size
@@ -282,40 +278,24 @@ module SPQR
         acc
       end
 
-      pp_decl :def, method.name, "(#{formals_in})" do
+      pp_decl :def, method.name, "(#{formals_in.join(",")})" do
         
-        if in_params.size + inout_params.size > 0  
-          what = "in"
-          
-          if in_params.size > 0 and inout_params.size > 0
-            what << " and in/out"
-          elsif inout_params.size > 0
-            what << "/out"
-          end
-          
-          pp "\# Print values of #{what} parameters"
-          (in_params + inout_params).each do |arg|
-            argdisplay = arg.name.to_s
+        if formals_in.size > 0  
+
+          pp "\# Print values of input parameters"
+          formals_in.each do |arg|
             pp('log.debug "' + "#{method.name}: #{arg.name} => " + '#{' + "#{argdisplay}" + '}"')
           end
         end
 
-        if out_params.size + inout_params.size > 0
-          what = "out"
+        if formals_out.size > 0
 
-          if out_params.size > 0 and inout_params.size > 0
-            what << " and in/out"
-          elsif inout_params.size > 0
-            what = "in/out"
-          end
+          pp "\# Assign values to output parameters"
 
-          pp "\# Assign values to #{what} parameters"
-
-          (out_params + inout_params).each do |arg|
-            argdisplay = arg.name.to_s
-            argtype = param_types[argdisplay]
-            raise RuntimeError.new("Can't find type for #{argdisplay} in #{param_types.inspect}") unless argtype
-            pp "#{argdisplay} ||= #{default_val(argtype)}"
+          formals_out.each do |arg|
+            argtype = param_types[arg]
+            raise RuntimeError.new("Can't find type for #{arg} in #{param_types.inspect}") unless argtype
+            pp "#{arg} ||= #{default_val(argtype)}"
           end
 
           pp "\# Return value"
@@ -324,9 +304,12 @@ module SPQR
         end
       end
 
-
       pp ""
       pp_decl :expose, "#{method.name.to_sym.inspect} do |args|" do
+        in_params = method.args.select {|arg| ['in', 'i', 'qmf::dir_in'].include? arg.dir.to_s.downcase }
+        out_params = method.args.select {|arg| ['out', 'o', 'qmf::dir_out'].include? arg.dir.to_s.downcase }
+        inout_params = method.args.select {|arg| ['inout', 'io', 'qmf::dir_inout'].include? arg.dir.to_s.downcase }
+
         {:in => in_params, :inout => inout_params, :out => out_params}.each do |dir,coll|
           coll.each do |arg|
             arg_nm = arg.name
