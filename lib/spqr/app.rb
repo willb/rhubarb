@@ -59,7 +59,7 @@ module SPQR
         klass.log = @log
 
         @classes_by_id[klass.class_id] = klass
-        @classes_by_name[klass.spqr_meta.classname] = ClassMeta.new(klass, schemaclass)
+        @classes_by_name[klass.spqr_meta.classname.to_s] = ClassMeta.new(klass, schemaclass)
       end
       
       unmanageable_ks.each do |klass|
@@ -292,7 +292,7 @@ module SPQR
     # turns an instance of a managed object into a QmfObject
     def qmfify(obj)
       @log.debug("trying to qmfify #{obj}:  qmf_oid is #{obj.qmf_oid} and class_id is #{obj.class.class_id}")
-      cm = @classes_by_name[obj.class.spqr_meta.classname]
+      cm = @classes_by_name[obj.class.spqr_meta.classname.to_s]
       return nil unless cm
 
       qmfobj = Qmf::AgentObject.new(cm.schema_class)
