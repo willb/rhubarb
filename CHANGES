@@ -1,3 +1,6 @@
+*  Rhubarb now properly handles persisting classes declared in
+   different modules and supports defining custom table names.
+
 *  spqr-gen now has preliminary support for generating classes that
    persist via rhubarb.
 
