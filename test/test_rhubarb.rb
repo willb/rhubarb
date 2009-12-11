@@ -11,7 +11,6 @@
 # 
 #     http://www.apache.org/licenses/LICENSE-2.0
 
-require 'rubygems'
 require 'rhubarb/rhubarb'
 require 'test/unit'
 
@@ -19,6 +18,21 @@ class TestClass
   include Rhubarb::Persisting  
   declare_column :foo, :integer
   declare_column :bar, :string
+end
+
+module RhubarbNamespace
+  class NMTC
+    include Rhubarb::Persisting  
+    declare_column :foo, :integer
+    declare_column :bar, :string
+  end
+
+  class NMTC2
+    include Rhubarb::Persisting  
+    declare_column :foo, :integer
+    declare_column :bar, :string
+    declare_table_name('namespacetestcase')
+  end
 end
 
 class TestClass2 
@@ -87,6 +101,8 @@ class BackendBasicTests < Test::Unit::TestCase
     klasses << ToRef
     klasses << FromRef
     klasses << FreshTestTable
+    klasses << RhubarbNamespace::NMTC
+    klasses << RhubarbNamespace::NMTC2
 
     klasses.each { |klass| klass.create_table }
 
@@ -108,6 +124,14 @@ class BackendBasicTests < Test::Unit::TestCase
     assert(r.column == "row_id", "Column of managed reference instance incorrect")
     assert(r.to_s == "references TestClass(row_id)", "string representation of managed reference instance incorrect")
     assert(r.managed_ref?, "managed reference should return true for managed_ref?")
+  end
+
+  def test_namespace_table_name
+    assert_equal "nmtc", RhubarbNamespace::NMTC.table_name
+  end
+
+  def test_set_table_name
+    assert_equal "namespacetestcase", RhubarbNamespace::NMTC2.table_name
   end
 
   def test_reference_ctor_string

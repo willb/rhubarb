@@ -102,10 +102,16 @@ end
 # Methods mixed in to the class object of a persisting class
 module PersistingClassMixins 
   # Returns the name of the database table modeled by this class.
+  # Defaults to the name of the class (sans module names)
   def table_name
-    self.name.downcase  
+    @table_name ||= self.name.split("::").pop.downcase  
   end
   
+  # Enables setting the table name to a custom name
+  def declare_table_name(nm)
+    @table_name = nm
+  end
+
   # Models a foreign-key relationship. +options+ is a hash of options, which include
   # +:column => + _name_::  specifies the name of the column to reference in +klass+ (defaults to row id)
   # +:on_delete => :cascade+:: specifies that deleting the referenced row in +klass+ will delete all rows referencing that row through this reference
