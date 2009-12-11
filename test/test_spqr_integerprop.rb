@@ -18,7 +18,6 @@ class TestSpqrIntegerProp < Test::Unit::TestCase
       expected = objs[(x + 1) % QmfIntegerProp::SIZE]
       o = objs[x]
       next_o = o.next.result
-      puts ("next_o: #{next_o}")
       actual = $console.object(:object_id=>next_o)
       assert_equal expected.int_id, actual.int_id
     end

@@ -12,7 +12,7 @@ require 'spqr/app'
 require 'rhubarb/rhubarb'
 
 module QmfTestHelpers
-  DEBUG = false
+  DEBUG = (::ENV["SPQR_TESTS_DEBUG"] and ::ENV["SPQR_TESTS_DEBUG"].downcase == "yes")
   
   class AgentNotifyHandler < Qmf::ConsoleHandler
     def initialize
