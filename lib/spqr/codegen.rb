@@ -179,9 +179,8 @@ module SPQR
         pkgname = (@package_list.map {|pkg| pkg.capitalize}).join("::")
         fqcn = ("#{pkgname}::#{@sc.name}" if pkgname) or @sc.name
 
+        pp "include ::Rhubarb::Persisting" if $DO_RHUBARB
         pp "include ::SPQR::Manageable\n"
-
-        pp "include ::Rhubarb::Persisting\n" if $DO_RHUBARB
         
         pp "qmf_package_name '#{@package_list.join(".")}'"
         pp "qmf_class_name '#{@sc.name.split("::")[-1]}'"
@@ -232,7 +231,9 @@ module SPQR
       rhubarb_kind = qmf_to_rhubarb(property.kind)
 
       if $DO_RHUBARB and rhubarb_kind
-        pp "declare_column :#{property.name}, #{rhubarb_kind}"
+        notnull = (", :not_null" if property.options[:index])
+        pp "declare_column :#{property.name}, #{rhubarb_kind}#{notnull}"
+        pp "declare_index :#{property.name}" if notnull
       else
         pp ""
         pp_decl :def, "#{property.name}" do
