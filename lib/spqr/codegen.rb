@@ -168,6 +168,7 @@ module SPQR
     private
     def gen_class
       pp "require 'spqr/spqr'"
+      pp "require 'rhubarb/rhubarb'" if $DO_RHUBARB
       pp ""
       
       @package_list.map {|pkg| pkg.capitalize}.each do |modname|
@@ -233,7 +234,7 @@ module SPQR
       if $DO_RHUBARB and rhubarb_kind
         notnull = (", :not_null" if property.options[:index])
         pp "declare_column :#{property.name}, #{rhubarb_kind}#{notnull}"
-        pp "declare_index :#{property.name}" if notnull
+        pp "declare_index_on :#{property.name}" if notnull
       else
         pp ""
         pp_decl :def, "#{property.name}" do
