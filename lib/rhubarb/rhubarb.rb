@@ -303,10 +303,14 @@ SELECT __freshest.* FROM (
       # Note that we do not support update triggers, since the API does 
       # not expose the capacity to change row IDs.
       
-      self.creation_callbacks << Proc.new do 
-        Persistence::db.execute_batch("CREATE TRIGGER refint_insert_#{self.table_name}_#{rf.referent.table_name}_#{self.creation_callbacks.size} BEFORE INSERT ON \"#{self.table_name}\" WHEN new.\"#{cname}\" IS NOT NULL AND NOT EXISTS (SELECT 1 FROM \"#{rf.referent.table_name}\" WHERE new.\"#{cname}\" == \"#{rf.column}\") BEGIN SELECT RAISE(ABORT, 'constraint failed'); END;")
-        
-        Persistence::db.execute_batch("CREATE TRIGGER refint_delete_#{self.table_name}_#{rf.referent.table_name}_#{self.creation_callbacks.size} BEFORE DELETE ON \"#{rf.referent.table_name}\" WHEN EXISTS (SELECT 1 FROM \"#{self.table_name}\" WHERE old.\"#{rf.column}\" == \"#{cname}\") BEGIN DELETE FROM \"#{self.table_name}\" WHERE \"#{cname}\" = old.\"#{rf.column}\"; END;") if rf.options[:on_delete] == :cascade
+      self.creation_callbacks << Proc.new do   
+        @ccount ||= 0
+
+        Persistence::db.execute_batch("CREATE TRIGGER rii_#{self.table_name}_#{@ccount}_#{rf.referent.table_name} BEFORE INSERT ON \"#{self.table_name}\" WHEN new.\"#{cname}\" IS NOT NULL AND NOT EXISTS (SELECT 1 FROM \"#{rf.referent.table_name}\" WHERE new.\"#{cname}\" == \"#{rf.column}\") BEGIN SELECT RAISE(ABORT, 'constraint failed'); END;")
+
+        Persistence::db.execute_batch("CREATE TRIGGER rid_#{self.table_name}_#{@ccount}_#{rf.referent.table_name} BEFORE DELETE ON \"#{rf.referent.table_name}\" WHEN EXISTS (SELECT 1 FROM \"#{self.table_name}\" WHERE old.\"#{rf.column}\" == \"#{cname}\") BEGIN DELETE FROM \"#{self.table_name}\" WHERE \"#{cname}\" = old.\"#{rf.column}\"; END;") if rf.options[:on_delete] == :cascade
+
+        @ccount = @ccount + 1
       end
     end
   end
