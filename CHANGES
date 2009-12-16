@@ -1,3 +1,7 @@
+version 0.1.1
+
+*  Other minor Rhubarb fixes.
+
 *  Rhubarb now properly handles persisting classes declared in
    different modules and supports defining custom table names.
 
