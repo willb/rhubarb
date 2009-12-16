@@ -207,6 +207,8 @@ module SPQR
       result = 0
       if self.respond_to? :spqr_object_id 
         result = spqr_object_id
+      elsif self.respond_to? :row_id
+        result = row_id
       else
         result = object_id
       end
