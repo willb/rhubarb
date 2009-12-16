@@ -21,7 +21,7 @@ module SPQR
     class ClassMeta < Struct.new(:object_class, :schema_class) ; end
 
     def initialize(options=nil)
-      defaults = {:logfile=>STDERR, :loglevel=>Logger::WARN, :notifier=>nil}
+      defaults = {:logfile=>STDERR, :loglevel=>Logger::WARN, :notifier=>nil, :server=>"localhost", :port=>5672}
       
       # convenient shorthands for log levels
       loglevels = {:debug => Logger::DEBUG, :info => Logger::INFO, :warn => Logger::WARN, :error => Logger::ERROR, :fatal => Logger::FATAL}
@@ -45,7 +45,12 @@ module SPQR
       @classes_by_id = {}
       @pipe = options[:notifier]
       @app_name = (options[:appname] or "SPQR application")
-
+      @qmf_host = options[:server]
+      @qmf_port = options[:port]
+      @qmf_sendUserId = (options[:user] or options[:password])
+      
+      @qmf_user = options[:user]
+      @qmf_password = options[:password]
     end
 
     def register(*ks)
@@ -157,7 +162,12 @@ module SPQR
       @log.debug("starting SPQR::App.main...")
       
       settings = Qmf::ConnectionSettings.new
-      settings.host = 'localhost'
+      settings.host = @qmf_host
+      settings.port = @qmf_port
+      settings.sendUserId = @qmf_sendUserId
+      
+      settings.username = @qmf_user if @qmf_sendUserId
+      settings.password = @qmf_password if @qmf_sendUserId
       
       @connection = Qmf::Connection.new(settings)
       @log.debug(" +-- @connection created:  #{@connection}")
