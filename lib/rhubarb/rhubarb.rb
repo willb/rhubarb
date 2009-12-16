@@ -130,6 +130,8 @@ module PersistingClassMixins
     return self.new(tup) if tup
     nil
   end
+  
+  alias find_by_id find
 
   def find_by(arg_hash)
     arg_hash = arg_hash.dup
@@ -418,7 +420,7 @@ module Persisting
     other.class_eval do
       attr_reader :row_id
       attr_reader :created
-      attr_reader :updated    
+      attr_reader :updated
     end
   end
   
