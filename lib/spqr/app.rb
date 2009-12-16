@@ -91,6 +91,7 @@ module SPQR
         # XXX: consider adding appropriate impl method to Manageable
         # to avoid this little dance
         actuals_in = managed_method.formals_in.inject([]) {|acc,nm| acc << args[nm]}
+        has_actuals = actuals_in.size > 0
         actuals_in = actuals_in[0] if actuals_in.size == 1
 
         @log.debug("managed_object.respond_to? #{managed_method.name.to_sym} ==> #{managed_object.respond_to? managed_method.name.to_sym}")
@@ -98,7 +99,7 @@ module SPQR
         @log.debug("formals:  #{managed_method.formals_in.inspect}")
         @log.debug("actuals:  #{actuals_in.inspect}")
 
-        actuals_out = actuals_in.size > 0 ? managed_object.send(name.to_sym, actuals_in) : managed_object.send(name.to_sym)
+        actuals_out = has_actuals ? managed_object.send(name.to_sym, actuals_in) : managed_object.send(name.to_sym)
 
         raise RuntimeError.new("#{managed_object.class} did not return the appropriate number of return values; got '#{actuals_out.inspect}', but expected #{managed_method.types_out.inspect}") unless result_valid(actuals_out, managed_method)
         
