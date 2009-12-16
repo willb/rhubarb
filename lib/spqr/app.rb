@@ -211,7 +211,9 @@ module SPQR
 
     def find_object(ctx, c_id, obj_id)
       # XXX:  context is currently ignored
+      @log.debug("in find_object; class ID is #{c_id}, object ID is #{obj_id}...")
       klass = @classes_by_id[c_id]
+      @log.debug("found class #{klass.inspect}")
       klass.find_by_id(obj_id) if klass
     end
     
