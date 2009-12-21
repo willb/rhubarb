@@ -87,9 +87,7 @@ module SPQR
         raise RuntimeError.new("#{managed_object.class} does not have #{name} exposed as a manageable method; has #{managed_object.class.spqr_meta.mmethods.inspect}") unless managed_method
 
         # Extract actual parameters from the Qmf::Arguments structure into a proper ruby list
-
-        # XXX: consider adding appropriate impl method to Manageable
-        # to avoid this little dance
+        @log.debug("actual params are: #{args.instance_variable_get(:@by_hash).inspect}") rescue nil
         actuals_in = managed_method.formals_in.inject([]) {|acc,nm| acc << args[nm]}
         actual_count = actuals_in.size
 
