@@ -47,7 +47,11 @@ module SPQR
       @app_name = (options[:appname] or "SPQR application")
       @qmf_host = options[:server]
       @qmf_port = options[:port]
-      @qmf_sendUserId = (options[:user] or options[:password])
+      @qmf_sendUserId = if options.has_key?(:send_user_id)
+                          options[:send_user_id]
+                        else
+                          (options.has_key?(:user) or options.has_key?(:password))
+                        end
       
       @qmf_user = options[:user]
       @qmf_password = options[:password]
