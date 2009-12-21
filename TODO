@@ -6,6 +6,7 @@ To do, overall:
 To do for spqr:
 
 ! Event support
+* Support for map-, array-, and list-valued parameters and properties (QMF on Ruby itself does not support these at the moment)
 * Broader query support (partially done)
 * Documentation
 * Test suite (partially done)

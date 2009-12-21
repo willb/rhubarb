@@ -1,3 +1,9 @@
+*  Enhancements to SPQR/Rhubarb interoperability.  (Rhubarb row_ids are
+   now used for half of the QMF object ID).
+
+*  Enhancements to app skeleton class: now allows specifying username,
+   password, hostname, and port in the constructor to SPQR::App.
+
 version 0.1.1 (85c87b1239f730374d47e2d8baf795c8c69050f4)
 
 *  Other minor Rhubarb fixes.
