@@ -27,7 +27,7 @@ end
     
 
 module Persistence
-  @@backend = nil
+  @@backends = nil
   
   def self.open(filename)
     self.db = SQLite3::Database.new(filename)
@@ -46,10 +46,6 @@ module Persistence
     @@backend = d
     self.db.results_as_hash = true if d != nil
     self.db.type_translation = true if d != nil
-  end
-  
-  def self.execute(*query)
-    db.execute(*query) if db != nil
   end
 end
 
@@ -139,7 +135,7 @@ module PersistingClassMixins
     select_criteria = valid_cols.map {|col| "#{col.to_s} = #{col.inspect}"}.join(" AND ")
     arg_hash.each {|k,v| arg_hash[k] = v.row_id if v.respond_to? :row_id}
 
-    Persistence::execute("select * from #{table_name} where #{select_criteria} order by row_id", arg_hash).map {|tup| self.new(tup) }
+    Persistence::db.execute("select * from #{table_name} where #{select_criteria} order by row_id", arg_hash).map {|tup| self.new(tup) }
   end
 
   # args contains the following keys
@@ -186,12 +182,12 @@ SELECT __freshest.* FROM (
   ORDER BY row_id
 "
 
-    Persistence::execute(query, query_params).map {|tup| self.new(tup) }
+    Persistence::db.execute(query, query_params).map {|tup| self.new(tup) }
   end
 
   # Does what it says on the tin.  Since this will allocate an object for each row, it isn't recomended for huge tables.
   def find_all
-    Persistence::execute("SELECT * from #{table_name}").map {|tup| self.new(tup)}
+    Persistence::db.execute("SELECT * from #{table_name}").map {|tup| self.new(tup)}
   end
 
   # Declares a query method named +name+ and adds it to this class.  The query method returns a list of objects corresponding to the rows returned by executing "+SELECT * FROM+ _table_ +WHERE+ _query_" on the database.
@@ -202,7 +198,7 @@ SELECT __freshest.* FROM (
         # handle reference parameters
         args = args.map {|x| (x.row_id if x.class.ancestors.include? Persisting) or x}
         
-        res = Persistence::execute("select * from #{table_name} where #{query}", args)
+        res = Persistence::db.execute("select * from #{table_name} where #{query}", args)
         res.map {|row| self.new(row)}        
       end
     end
@@ -216,7 +212,7 @@ SELECT __freshest.* FROM (
         # handle reference parameters
         args = args.map {|x| (x.row_id if x.class.ancestors.include? Persisting) or x}
         
-        res = Persistence::execute(query.gsub("__TABLE__", "#{self.table_name}"), args)
+        res = Persistence::db.execute(query.gsub("__TABLE__", "#{self.table_name}"), args)
         # XXX:  should freshen each row?
         res.map {|row| self.new(row) }        
       end
@@ -227,7 +223,7 @@ SELECT __freshest.* FROM (
     @creation_callbacks << Proc.new do
       idx_name = "idx_#{self.table_name}__#{fields.join('__')}__#{@creation_callbacks.size}"
       creation_cmd = "create index #{idx_name} on #{self.table_name} (#{fields.join(', ')})"
-      Persistence.execute(creation_cmd)
+      Persistence::db.execute(creation_cmd)
     end if fields.size > 0
   end
 
@@ -254,12 +250,12 @@ SELECT __freshest.* FROM (
     klass = (class << self; self end)
     klass.class_eval do 
       define_method find_method_name do |arg|
-        res = Persistence::execute("select * from #{table_name} where #{cname} = ?", arg)
+        res = Persistence::db.execute("select * from #{table_name} where #{cname} = ?", arg)
         res.map {|row| self.new(row)}
       end
 
       define_method find_first_method_name do |arg|
-        res = Persistence::execute("select * from #{table_name} where #{cname} = ?", arg)
+        res = Persistence::db.execute("select * from #{table_name} where #{cname} = ?", arg)
         return self.new(res[0]) if res.size > 0
         nil
       end
@@ -367,7 +363,7 @@ SELECT __freshest.* FROM (
   
   # Creates a table in the database corresponding to this class.
   def create_table
-    Persistence::execute(table_decl)
+    Persistence::db.execute(table_decl)
     @creation_callbacks.each {|func| func.call}
   end
 
@@ -397,12 +393,12 @@ SELECT __freshest.* FROM (
 
   # Returns the number of rows in the table backing this class
   def count
-    result = Persistence::execute("select count(row_id) from #{table_name}")[0]
+    result = Persistence::db.execute("select count(row_id) from #{table_name}")[0]
     result[0].to_i
   end
 
   def find_tuple(id)
-    res = Persistence::execute("select * from #{table_name} where row_id = ?", id)
+    res = Persistence::db.execute("select * from #{table_name} where row_id = ?", id)
     if res.size == 0
       nil
     else
@@ -448,7 +444,7 @@ module Persisting
   # Deletes the row corresponding to this object from the database; 
   # invalidates =self= and any other objects backed by this row
   def delete
-    Persistence::execute("delete from #{self.class.table_name} where row_id = ?", @row_id)
+    Persistence::db.execute("delete from #{self.class.table_name} where row_id = ?", @row_id)
     mark_dirty
     @tuple = nil
     @row_id = nil
@@ -496,7 +492,7 @@ module Persisting
   # Helper method to update the row in the database when one of our fields changes
   def update(attr_name, value)
     mark_dirty
-    Persistence::execute("update #{self.class.table_name} set #{attr_name} = ?, updated = ? where row_id = ?", value, SQLBUtil::timestamp, @row_id)
+    Persistence::db.execute("update #{self.class.table_name} set #{attr_name} = ?, updated = ? where row_id = ?", value, SQLBUtil::timestamp, @row_id)
   end
   
   # Resolve any fields that reference other tables, replacing row ids with referred objects
