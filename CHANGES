@@ -1,3 +1,8 @@
+*  Rhubarb now supports multiple backend databases, via an extra
+parameter to Persistence::open and to the create_table class methods.
+Note that it is not currently possible to have one class backed by
+multiple databases.
+
 version 0.1.2 (2c45fd4d693a396e9206607a6f053b1eb4696272)
 
 *  Enhancements to SPQR/Rhubarb interoperability.  (Rhubarb row_ids are
