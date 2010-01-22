@@ -27,25 +27,39 @@ end
     
 
 module Persistence
-  @@backends = nil
+  class DbCollection < Hash
+    alias orig_set []=
+    
+    def []=(k,v)
+      v.results_as_hash = true if v
+      v.type_translation = true if v
+      orig_set(k,v)
+    end
+  end
   
-  def self.open(filename)
-    self.db = SQLite3::Database.new(filename)
+  @@dbs = DbCollection.new
+  
+  def self.open(filename, which=:default)
+    dbs[which] = SQLite3::Database.new(filename)
   end
 
-  def self.close
-    self.db.close
-    self.db = nil
+  def self.close(which=:default)
+    if dbs[which]
+      dbs[which].close
+      dbs.delete(which)
+    end
   end
 
   def self.db
-    @@backend
+    dbs[:default]
+  end
+  
+  def self.db=(d)
+    dbs[:default] = d
   end
 
-  def self.db=(d)
-    @@backend = d
-    self.db.results_as_hash = true if d != nil
-    self.db.type_translation = true if d != nil
+  def self.dbs
+    @@dbs
   end
 end
 
@@ -135,7 +149,7 @@ module PersistingClassMixins
     select_criteria = valid_cols.map {|col| "#{col.to_s} = #{col.inspect}"}.join(" AND ")
     arg_hash.each {|k,v| arg_hash[k] = v.row_id if v.respond_to? :row_id}
 
-    Persistence::db.execute("select * from #{table_name} where #{select_criteria} order by row_id", arg_hash).map {|tup| self.new(tup) }
+    self.db.execute("select * from #{table_name} where #{select_criteria} order by row_id", arg_hash).map {|tup| self.new(tup) }
   end
 
   # args contains the following keys
@@ -182,12 +196,12 @@ SELECT __freshest.* FROM (
   ORDER BY row_id
 "
 
-    Persistence::db.execute(query, query_params).map {|tup| self.new(tup) }
+    self.db.execute(query, query_params).map {|tup| self.new(tup) }
   end
 
   # Does what it says on the tin.  Since this will allocate an object for each row, it isn't recomended for huge tables.
   def find_all
-    Persistence::db.execute("SELECT * from #{table_name}").map {|tup| self.new(tup)}
+    self.db.execute("SELECT * from #{table_name}").map {|tup| self.new(tup)}
   end
 
   # Declares a query method named +name+ and adds it to this class.  The query method returns a list of objects corresponding to the rows returned by executing "+SELECT * FROM+ _table_ +WHERE+ _query_" on the database.
@@ -198,7 +212,7 @@ SELECT __freshest.* FROM (
         # handle reference parameters
         args = args.map {|x| (x.row_id if x.class.ancestors.include? Persisting) or x}
         
-        res = Persistence::db.execute("select * from #{table_name} where #{query}", args)
+        res = self.db.execute("select * from #{table_name} where #{query}", args)
         res.map {|row| self.new(row)}        
       end
     end
@@ -212,7 +226,7 @@ SELECT __freshest.* FROM (
         # handle reference parameters
         args = args.map {|x| (x.row_id if x.class.ancestors.include? Persisting) or x}
         
-        res = Persistence::db.execute(query.gsub("__TABLE__", "#{self.table_name}"), args)
+        res = self.db.execute(query.gsub("__TABLE__", "#{self.table_name}"), args)
         # XXX:  should freshen each row?
         res.map {|row| self.new(row) }        
       end
@@ -223,7 +237,7 @@ SELECT __freshest.* FROM (
     @creation_callbacks << Proc.new do
       idx_name = "idx_#{self.table_name}__#{fields.join('__')}__#{@creation_callbacks.size}"
       creation_cmd = "create index #{idx_name} on #{self.table_name} (#{fields.join(', ')})"
-      Persistence::db.execute(creation_cmd)
+      self.db.execute(creation_cmd)
     end if fields.size > 0
   end
 
@@ -250,12 +264,12 @@ SELECT __freshest.* FROM (
     klass = (class << self; self end)
     klass.class_eval do 
       define_method find_method_name do |arg|
-        res = Persistence::db.execute("select * from #{table_name} where #{cname} = ?", arg)
+        res = self.db.execute("select * from #{table_name} where #{cname} = ?", arg)
         res.map {|row| self.new(row)}
       end
 
       define_method find_first_method_name do |arg|
-        res = Persistence::db.execute("select * from #{table_name} where #{cname} = ?", arg)
+        res = self.db.execute("select * from #{table_name} where #{cname} = ?", arg)
         return self.new(res[0]) if res.size > 0
         nil
       end
@@ -307,9 +321,9 @@ SELECT __freshest.* FROM (
         insert_trigger_name = "ri_insert_#{self.table_name}_#{@ccount}_#{rf.referent.table_name}"
         delete_trigger_name = "ri_delete_#{self.table_name}_#{@ccount}_#{rf.referent.table_name}"
         
-        Persistence::db.execute_batch("CREATE TRIGGER #{insert_trigger_name} BEFORE INSERT ON \"#{self.table_name}\" WHEN new.\"#{cname}\" IS NOT NULL AND NOT EXISTS (SELECT 1 FROM \"#{rf.referent.table_name}\" WHERE new.\"#{cname}\" == \"#{rf.column}\") BEGIN SELECT RAISE(ABORT, 'constraint #{insert_trigger_name} (#{rf.referent.table_name} missing foreign key row) failed'); END;")
+        self.db.execute_batch("CREATE TRIGGER #{insert_trigger_name} BEFORE INSERT ON \"#{self.table_name}\" WHEN new.\"#{cname}\" IS NOT NULL AND NOT EXISTS (SELECT 1 FROM \"#{rf.referent.table_name}\" WHERE new.\"#{cname}\" == \"#{rf.column}\") BEGIN SELECT RAISE(ABORT, 'constraint #{insert_trigger_name} (#{rf.referent.table_name} missing foreign key row) failed'); END;")
 
-        Persistence::db.execute_batch("CREATE TRIGGER #{delete_trigger_name} BEFORE DELETE ON \"#{rf.referent.table_name}\" WHEN EXISTS (SELECT 1 FROM \"#{self.table_name}\" WHERE old.\"#{rf.column}\" == \"#{cname}\") BEGIN DELETE FROM \"#{self.table_name}\" WHERE \"#{cname}\" = old.\"#{rf.column}\"; END;") if rf.options[:on_delete] == :cascade
+        self.db.execute_batch("CREATE TRIGGER #{delete_trigger_name} BEFORE DELETE ON \"#{rf.referent.table_name}\" WHEN EXISTS (SELECT 1 FROM \"#{self.table_name}\" WHERE old.\"#{rf.column}\" == \"#{cname}\") BEGIN DELETE FROM \"#{self.table_name}\" WHERE \"#{cname}\" = old.\"#{rf.column}\"; END;") if rf.options[:on_delete] == :cascade
 
         @ccount = @ccount + 1
       end
@@ -340,7 +354,7 @@ SELECT __freshest.* FROM (
       new_row[k] = v.row_id if v.class.ancestors.include? Persisting
     end
 
-    Persistence::db.transaction do |db|
+    self.db.transaction do |db|
       stmt = "insert into #{table_name} (#{colspec}) values (#{valspec})"
 #      p stmt
       db.execute(stmt, new_row)
@@ -362,8 +376,9 @@ SELECT __freshest.* FROM (
   end
   
   # Creates a table in the database corresponding to this class.
-  def create_table
-    Persistence::db.execute(table_decl)
+  def create_table(dbkey=:default)
+    self.db = Persistence::dbs[dbkey]
+    self.db.execute(table_decl)
     @creation_callbacks.each {|func| func.call}
   end
 
@@ -378,7 +393,7 @@ SELECT __freshest.* FROM (
         # The API purposefully does not expose the ability to create a
         # row with a given id, and created and updated values are
         # maintained automatically by the API.
-        attr_accessor :columns, :colnames, :constraints, :dirtied, :refs, :creation_callbacks
+        attr_accessor :columns, :colnames, :constraints, :dirtied, :refs, :creation_callbacks, :db
       end
     end
 
@@ -393,12 +408,12 @@ SELECT __freshest.* FROM (
 
   # Returns the number of rows in the table backing this class
   def count
-    result = Persistence::db.execute("select count(row_id) from #{table_name}")[0]
+    result = self.db.execute("select count(row_id) from #{table_name}")[0]
     result[0].to_i
   end
 
   def find_tuple(id)
-    res = Persistence::db.execute("select * from #{table_name} where row_id = ?", id)
+    res = self.db.execute("select * from #{table_name} where row_id = ?", id)
     if res.size == 0
       nil
     else
@@ -420,6 +435,9 @@ module Persisting
     end
   end
   
+  def db
+    self.class.db
+  end
   
   # Returns true if the row backing this object has been deleted from the database
   def deleted?
@@ -444,7 +462,7 @@ module Persisting
   # Deletes the row corresponding to this object from the database; 
   # invalidates =self= and any other objects backed by this row
   def delete
-    Persistence::db.execute("delete from #{self.class.table_name} where row_id = ?", @row_id)
+    self.db.execute("delete from #{self.class.table_name} where row_id = ?", @row_id)
     mark_dirty
     @tuple = nil
     @row_id = nil
@@ -492,7 +510,7 @@ module Persisting
   # Helper method to update the row in the database when one of our fields changes
   def update(attr_name, value)
     mark_dirty
-    Persistence::db.execute("update #{self.class.table_name} set #{attr_name} = ?, updated = ? where row_id = ?", value, SQLBUtil::timestamp, @row_id)
+    self.db.execute("update #{self.class.table_name} set #{attr_name} = ?, updated = ? where row_id = ?", value, SQLBUtil::timestamp, @row_id)
   end
   
   # Resolve any fields that reference other tables, replacing row ids with referred objects
