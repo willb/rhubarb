@@ -204,6 +204,10 @@ SELECT __freshest.* FROM (
     self.db.execute("SELECT * from #{table_name}").map {|tup| self.new(tup)}
   end
 
+  def delete_all
+    self.db.execute("DELETE from #{table_name}")
+  end
+
   # Declares a query method named +name+ and adds it to this class.  The query method returns a list of objects corresponding to the rows returned by executing "+SELECT * FROM+ _table_ +WHERE+ _query_" on the database.
   def declare_query(name, query)
     klass = (class << self; self end)
