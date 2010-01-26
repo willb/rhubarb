@@ -1,3 +1,8 @@
+*  This is a release featuring only minor enhancements to Rhubarb.  If 
+   you don't use Rhubarb, there is no need to upgrade.
+
+*  Rhubarb classes now support a delete_all method.
+
 *  Rhubarb now supports multiple backend databases, via an extra
    parameter to Persistence::open and to the create_table class methods.
    Note that it is not currently possible to have one class backed by
