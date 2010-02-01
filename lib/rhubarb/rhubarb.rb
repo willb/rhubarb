@@ -386,6 +386,14 @@ SELECT __freshest.* FROM (
     @creation_callbacks.each {|func| func.call}
   end
 
+  def db
+    @db || Persistence::db
+  end
+
+  def db=(d)
+    @db = d
+  end
+
   # Ensure that all the necessary accessors on our class instance are defined 
   # and that all metaclass fields have the appropriate values
   def ensure_accessors
@@ -397,7 +405,7 @@ SELECT __freshest.* FROM (
         # The API purposefully does not expose the ability to create a
         # row with a given id, and created and updated values are
         # maintained automatically by the API.
-        attr_accessor :columns, :colnames, :constraints, :dirtied, :refs, :creation_callbacks, :db
+        attr_accessor :columns, :colnames, :constraints, :dirtied, :refs, :creation_callbacks
       end
     end
 
