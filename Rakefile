@@ -24,6 +24,65 @@ def pkg_version
   return version.chomp
 end
 
+def pkg_version
+  version = File.exist?('VERSION') ? File.read('VERSION') : ""
+  return version.chomp
+end
+
+def pkg_name
+  return 'ruby-rhubarb'
+end
+
+def pkg_spec
+  return pkg_name() + ".spec"
+end
+
+def pkg_rel
+  return `grep -i 'define rel' #{pkg_spec} | awk '{print $3}'`.chomp()
+end
+
+def pkg_source
+  return pkg_name() + "-" + pkg_version() + "-" + pkg_rel() + ".tar.gz"
+end
+
+def pkg_dir
+  return pkg_name() + "-" + pkg_version()
+end
+
+def rpm_dirs
+  return %w{BUILD BUILDROOT RPMS SOURCES SPECS SRPMS}
+end
+
+desc "create RPMs"
+task :rpms => [:build, :tarball] do
+  require 'fileutils'
+  FileUtils.cp pkg_spec(), 'SPECS'
+  sh "rpmbuild --define=\"_topdir \${PWD}\" -ba SPECS/#{pkg_spec}"
+end
+
+desc "Create a tarball"
+task :tarball => :make_rpmdirs do
+  require 'fileutils'
+  FileUtils.cp_r 'lib', pkg_dir()
+  FileUtils.cp ['LICENSE', 'README.rdoc', 'CHANGES', 'TODO', 'VERSION'], pkg_dir()
+  sh "tar -cf #{pkg_source} #{pkg_dir}"
+  FileUtils.mv pkg_source(), 'SOURCES'
+end
+
+desc "Make dirs for building RPM"
+task :make_rpmdirs => :rpm_clean do
+  require 'fileutils'
+  FileUtils.mkdir pkg_dir()
+  FileUtils.mkdir rpm_dirs()
+end
+
+desc "Cleanup after an RPM build"
+task :rpm_clean do
+  require 'fileutils'
+  FileUtils.rm_r pkg_dir(), :force => true
+  FileUtils.rm_r rpm_dirs(), :force => true
+end
+
 require 'spec/rake/spectask'
 Spec::Rake::SpecTask.new(:spec) do |spec|
   spec.libs << 'lib' << 'spec'
