@@ -1,12 +1,13 @@
-version 0.1.5
+version 0.2.0
 
-*  First standalone release of Rhubarb.
+*  First standalone release of Rhubarb.  Previous releases are included
+   with SPQR.
 
 *  Managed classes that use the non-default db will respect assignments
    to the db class field, even if it occurs before the call to
    create_table.  This should simplify some client code.
 
-version 0.1.4
+version 0.1.4 (f24baeafb0fe88e09c232acac3891d11771325a9)
 
 *  0.1.3 introduced a compatibility issue with previous versions of
    Rhubarb.  These should be resolved here.
