@@ -1,3 +1,6 @@
+* Test coverage of multiple-db situations
+* Test coverage of close-and-reopen db situations
+* Metadata stored in db files
 * Bring code coverage up to 100%
 * Documentation
 * Standalone examples (i.e. not just "please see the test suite")
