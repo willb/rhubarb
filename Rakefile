@@ -4,13 +4,14 @@ require 'rake'
 begin
   require 'jeweler'
   Jeweler::Tasks.new do |gem|
-    gem.name = "spqr"
-    gem.summary = %Q{SPQR:  {Schema Processor|Straightforward Publishing} for QMF agents in Ruby}
-    gem.description = %Q{SPQR makes it very simple to expose methods on Ruby objects over QMF.  You must install ruby-qmf in order to use SPQR.}
+    gem.name = "rhubarb"
+    gem.summary = %Q{Rhubarb:  object graph persistence, easy as pie}
+    gem.description = %Q{Rhubarb is a simple object-graph persistence library implemented as a mixin.  It also works with the SPQR library for straightforward object publishing over QMF.}
     gem.email = "willb@redhat.com"
-    gem.homepage = "http://git.fedorahosted.org/git/grid/spqr.git"
+    gem.homepage = "http://git.fedorahosted.org/git/grid/rhubarb.git"
     gem.authors = ["William Benton"]
     gem.add_development_dependency "rspec", ">= 1.2.9"
+    gem.add_dependency "sqlite3-ruby", ">= 1.2.2"
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
   end
   Jeweler::GemcutterTasks.new
@@ -21,16 +22,6 @@ end
 def pkg_version
   version = File.exist?('VERSION') ? File.read('VERSION') : ""
   return version.chomp
-end
-
-desc "create an RPM spec file"
-task :rpmspec => :build do
-  sh "gem2rpm -t spqr.spec.in -o spqr.spec pkg/spqr-#{pkg_version}.gem"
-end
-
-desc "create a source RPM"
-task :srpm => :build do
-  sh "gem2rpm -t spqr.spec.in -s pkg/spqr-#{pkg_version}.gem"
 end
 
 require 'spec/rake/spectask'
