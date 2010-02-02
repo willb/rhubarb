@@ -381,7 +381,7 @@ SELECT __freshest.* FROM (
   
   # Creates a table in the database corresponding to this class.
   def create_table(dbkey=:default)
-    self.db = Persistence::dbs[dbkey]
+    self.db ||= Persistence::dbs[dbkey]
     self.db.execute(table_decl)
     @creation_callbacks.each {|func| func.call}
   end
