@@ -273,8 +273,8 @@ SELECT __freshest.* FROM (
       end
 
       define_method find_first_method_name do |arg|
-        res = self.db.execute("select * from #{table_name} where #{cname} = ?", arg)
-        return self.new(res[0]) if res.size > 0
+        res = self.db.get_first_row("select * from #{table_name} where #{cname} = ?", arg)
+        return self.new(res) if res
         nil
       end
     end
