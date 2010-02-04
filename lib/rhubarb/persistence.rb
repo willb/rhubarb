@@ -27,7 +27,7 @@ module Rhubarb
       end
     end
     
-    @@dbs = DbCollection.new
+    @dbs = DbCollection.new
     
     def self.open(filename, which=:default)
       dbs[which] = SQLite3::Database.new(filename)
@@ -49,7 +49,7 @@ module Rhubarb
     end
   
     def self.dbs
-      @@dbs
+      @dbs
     end
   end
 end
