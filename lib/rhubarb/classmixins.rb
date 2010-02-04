@@ -10,6 +10,8 @@
 # 
 #     http://www.apache.org/licenses/LICENSE-2.0
 
+require 'rhubarb/mixins/freshness'
+
 module Rhubarb
   # Methods mixed in to the class object of a persisting class
   module PersistingClassMixins 
@@ -23,6 +25,8 @@ module Rhubarb
     def declare_table_name(nm)
       @table_name = nm
     end
+    
+    alias table_name= declare_table_name
 
     # Models a foreign-key relationship. +options+ is a hash of options, which include
     # +:column => + _name_::  specifies the name of the column to reference in +klass+ (defaults to row id)
@@ -39,10 +43,9 @@ module Rhubarb
     # Returns an object corresponding to the row with the given ID, or +nil+ if no such row exists.
     def find(id)
       tup = self.find_tuple(id)
-      return self.new(tup) if tup
-      nil
+      tup ? self.new(tup) : nil
     end
-
+    
     alias find_by_id find
 
     def find_by(arg_hash)
@@ -52,53 +55,6 @@ module Rhubarb
       arg_hash.each {|k,v| arg_hash[k] = v.row_id if v.respond_to? :row_id}
 
       self.db.execute("select * from #{table_name} where #{select_criteria} order by row_id", arg_hash).map {|tup| self.new(tup) }
-    end
-
-    # args contains the following keys
-    #  * :group_by maps to a list of columns to group by (mandatory)
-    #  * :select_by maps to a hash mapping from column symbols to values (optional)
-    #  * :version maps to some version to be considered "current" for the purposes of this query; that is, all rows later than the "current" version will be disregarded (optional, defaults to latest version)
-    def find_freshest(args)
-      args = args.dup
-
-      args[:version] ||= Util::timestamp
-      args[:select_by] ||= {}
-
-      query_params = {}
-      query_params[:version] = args[:version]
-
-      select_clauses = ["created <= :version"]
-
-      valid_cols = self.colnames.intersection args[:select_by].keys
-
-      valid_cols.map do |col|
-        select_clauses << "#{col.to_s} = #{col.inspect}"
-        val = args[:select_by][col]
-        val = val.row_id if val.respond_to? :row_id
-        query_params[col] = val
-      end
-
-      group_by_clause = "GROUP BY " + args[:group_by].join(", ")
-      where_clause = "WHERE " + select_clauses.join(" AND ")
-      projection = self.colnames - [:created]
-      join_clause = projection.map do |column|
-        "__fresh.#{column} = __freshest.#{column}"
-      end
-
-      projection << "MAX(created) AS __current_version"
-      join_clause << "__fresh.__current_version = __freshest.created"
-
-      query = "
-  SELECT __freshest.* FROM (
-    SELECT #{projection.to_a.join(', ')} FROM (
-      SELECT * from #{table_name} #{where_clause}
-    ) #{group_by_clause}
-  ) as __fresh INNER JOIN #{table_name} as __freshest ON
-    #{join_clause.join(' AND ')}
-    ORDER BY row_id
-  "
-
-      self.db.execute(query, query_params).map {|tup| self.new(tup) }
     end
 
     # Does what it says on the tin.  Since this will allocate an object for each row, it isn't recomended for huge tables.
@@ -124,7 +80,6 @@ module Rhubarb
           args = args.map {|arg| Util::rhubarb_fk_identity(arg)}
 
           res = self.db.execute(query.gsub("__TABLE__", "#{self.table_name}"), args)
-          # XXX:  should freshen each row?
           res.map {|row| self.new(row) }        
         end
       end
@@ -168,8 +123,7 @@ module Rhubarb
 
         define_method find_first_method_name do |arg|
           res = self.db.get_first_row(find_query, arg)
-          return self.new(res) if res
-          nil
+          res ? self.new(res) : nil
         end
       end
 
@@ -212,15 +166,17 @@ module Rhubarb
         # triggers to cascade deletes. 
         # Note that we do not support update triggers, since the API does 
         # not expose the capacity to change row IDs.
+        
+        rtable = rf.referent.table_name
 
         self.creation_callbacks << Proc.new do   
           @ccount ||= 0
 
-          insert_trigger_name, delete_trigger_name = %w{insert delete}.map {|op| "ri_#{op}_#{self.table_name}_#{@ccount}_#{rf.referent.table_name}" } 
+          insert_trigger_name, delete_trigger_name = %w{insert delete}.map {|op| "ri_#{op}_#{self.table_name}_#{@ccount}_#{rtable}" } 
 
-          self.db.execute_batch("CREATE TRIGGER #{insert_trigger_name} BEFORE INSERT ON \"#{self.table_name}\" WHEN new.\"#{cname}\" IS NOT NULL AND NOT EXISTS (SELECT 1 FROM \"#{rf.referent.table_name}\" WHERE new.\"#{cname}\" == \"#{rf.column}\") BEGIN SELECT RAISE(ABORT, 'constraint #{insert_trigger_name} (#{rf.referent.table_name} missing foreign key row) failed'); END;")
+          self.db.execute_batch("CREATE TRIGGER #{insert_trigger_name} BEFORE INSERT ON \"#{self.table_name}\" WHEN new.\"#{cname}\" IS NOT NULL AND NOT EXISTS (SELECT 1 FROM \"#{rtable}\" WHERE new.\"#{cname}\" == \"#{rf.column}\") BEGIN SELECT RAISE(ABORT, 'constraint #{insert_trigger_name} (#{rtable} missing foreign key row) failed'); END;")
 
-          self.db.execute_batch("CREATE TRIGGER #{delete_trigger_name} BEFORE DELETE ON \"#{rf.referent.table_name}\" WHEN EXISTS (SELECT 1 FROM \"#{self.table_name}\" WHERE old.\"#{rf.column}\" == \"#{cname}\") BEGIN DELETE FROM \"#{self.table_name}\" WHERE \"#{cname}\" = old.\"#{rf.column}\"; END;") if rf.options[:on_delete] == :cascade
+          self.db.execute_batch("CREATE TRIGGER #{delete_trigger_name} BEFORE DELETE ON \"#{rtable}\" WHEN EXISTS (SELECT 1 FROM \"#{self.table_name}\" WHERE old.\"#{rf.column}\" == \"#{cname}\") BEGIN DELETE FROM \"#{self.table_name}\" WHERE \"#{cname}\" = old.\"#{rf.column}\"; END;") if rf.options[:on_delete] == :cascade
 
           @ccount = @ccount + 1
         end
@@ -231,8 +187,7 @@ module Rhubarb
     # the check method.
     def declare_constraint(cname, kind, *details)
       ensure_accessors
-      info = details.join(" ")
-      @constraints << "constraint #{cname} #{kind} #{info}"
+      @constraints << "constraint #{cname} #{kind} #{details.join(" ")}"
     end
 
     # Creates a new row in the table with the supplied column values.
@@ -242,8 +197,7 @@ module Rhubarb
       new_row[:created] = new_row[:updated] = Util::timestamp
 
       cols = colnames.intersection new_row.keys
-      colspec = (cols.map {|col| col.to_s}).join(", ")
-      valspec = (cols.map {|col| col.inspect}).join(", ")
+      colspec, valspec = [:to_s, :inspect].map {|msg| (cols.map {|col| col.send(msg)}).join(", ")}
       res = nil
 
       # resolve any references in the args
@@ -262,18 +216,13 @@ module Rhubarb
     # Returns a string consisting of the DDL statement to create a table
     # corresponding to this class. 
     def table_decl
-      cols = columns.join(", ")
-      consts = constraints.join(", ")
-      if consts.size > 0
-        "create table #{table_name} (#{cols}, #{consts});"
-      else
-        "create table #{table_name} (#{cols});"
-      end
+      ddlspecs = [columns.join(", "), constraints.join(", ")].reject {|str| str.size==0}.join(", ")
+      "create table #{table_name} (#{ddlspecs});"
     end
 
     # Creates a table in the database corresponding to this class.
     def create_table(dbkey=:default)
-      self.db ||= Persistence::dbs[dbkey]
+      self.db ||= Persistence::dbs[dbkey] unless @explicitdb
       self.db.execute(table_decl)
       @creation_callbacks.each {|func| func.call}
     end
@@ -282,8 +231,9 @@ module Rhubarb
       @db || Persistence::db
     end
 
-    def db=(d)
-      @db = d
+    def db=(dbo)
+      @explicitdb = true
+      @db = dbo
     end
 
     # Ensure that all the necessary accessors on our class instance are defined 
@@ -312,17 +262,14 @@ module Rhubarb
 
     # Returns the number of rows in the table backing this class
     def count
-      result = self.db.execute("select count(row_id) from #{table_name}")[0]
-      result[0].to_i
+      self.db.get_first_value("select count(row_id) from #{table_name}").to_i
     end
 
     def find_tuple(id)
-      res = self.db.execute("select * from #{table_name} where row_id = ?", id)
-      if res.size == 0
-        nil
-      else
-        res[0]
-      end
+      self.db.get_first_row("select * from #{table_name} where row_id = ?", id)
     end
+    
+    include FindFreshest
+    
   end
 end
