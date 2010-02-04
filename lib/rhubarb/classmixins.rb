@@ -147,6 +147,7 @@ module Rhubarb
 
       find_method_name = "find_by_#{cname}".to_sym
       find_first_method_name = "find_first_by_#{cname}".to_sym
+      find_query = "select * from #{table_name} where #{cname} = ?"
 
       get_method_name = "#{cname}".to_sym
       set_method_name = "#{cname}=".to_sym
@@ -161,12 +162,12 @@ module Rhubarb
       klass = (class << self; self end)
       klass.class_eval do 
         define_method find_method_name do |arg|
-          res = self.db.execute("select * from #{table_name} where #{cname} = ?", arg)
+          res = self.db.execute(find_query, arg)
           res.map {|row| self.new(row)}
         end
 
         define_method find_first_method_name do |arg|
-          res = self.db.get_first_row("select * from #{table_name} where #{cname} = ?", arg)
+          res = self.db.get_first_row(find_query, arg)
           return self.new(res) if res
           nil
         end
@@ -215,8 +216,7 @@ module Rhubarb
         self.creation_callbacks << Proc.new do   
           @ccount ||= 0
 
-          insert_trigger_name = "ri_insert_#{self.table_name}_#{@ccount}_#{rf.referent.table_name}"
-          delete_trigger_name = "ri_delete_#{self.table_name}_#{@ccount}_#{rf.referent.table_name}"
+          insert_trigger_name, delete_trigger_name = %w{insert delete}.map {|op| "ri_#{op}_#{self.table_name}_#{@ccount}_#{rf.referent.table_name}" } 
 
           self.db.execute_batch("CREATE TRIGGER #{insert_trigger_name} BEFORE INSERT ON \"#{self.table_name}\" WHEN new.\"#{cname}\" IS NOT NULL AND NOT EXISTS (SELECT 1 FROM \"#{rf.referent.table_name}\" WHERE new.\"#{cname}\" == \"#{rf.column}\") BEGIN SELECT RAISE(ABORT, 'constraint #{insert_trigger_name} (#{rf.referent.table_name} missing foreign key row) failed'); END;")
 
