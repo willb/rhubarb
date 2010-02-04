@@ -14,7 +14,7 @@
 require 'rubygems'
 require 'set'
 require 'sqlite3'
-require 'rhubarb/timeutil'
+require 'rhubarb/util'
 require 'rhubarb/persistence'
 require 'rhubarb/column'
 require 'rhubarb/reference'

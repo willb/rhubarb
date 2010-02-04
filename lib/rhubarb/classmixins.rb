@@ -61,7 +61,7 @@ module Rhubarb
     def find_freshest(args)
       args = args.dup
 
-      args[:version] ||= TimeUtil::timestamp
+      args[:version] ||= Util::timestamp
       args[:select_by] ||= {}
 
       query_params = {}
@@ -121,7 +121,7 @@ module Rhubarb
       klass.class_eval do
         define_method name.to_s do |*args|
           # handle reference parameters
-          args = args.map {|x| (x.row_id if x.class.ancestors.include? Persisting) or x}
+          args = args.map {|arg| Util::rhubarb_fk_identity(arg)}
 
           res = self.db.execute(query.gsub("__TABLE__", "#{self.table_name}"), args)
           # XXX:  should freshen each row?
@@ -239,7 +239,7 @@ module Rhubarb
     # May throw a SQLite3::SQLException.
     def create(*args)
       new_row = args[0]
-      new_row[:created] = new_row[:updated] = TimeUtil::timestamp
+      new_row[:created] = new_row[:updated] = Util::timestamp
 
       cols = colnames.intersection new_row.keys
       colspec = (cols.map {|col| col.to_s}).join(", ")
@@ -247,13 +247,12 @@ module Rhubarb
       res = nil
 
       # resolve any references in the args
-      new_row.each do |k,v|
-        new_row[k] = v.row_id if v.class.ancestors.include? Persisting
+      new_row.each do |column,value|
+        new_row[column] = Util::rhubarb_fk_identity(value)
       end
 
       self.db.transaction do |db|
         stmt = "insert into #{table_name} (#{colspec}) values (#{valspec})"
-  #      p stmt
         db.execute(stmt, new_row)
         res = find(db.last_insert_row_id)
       end

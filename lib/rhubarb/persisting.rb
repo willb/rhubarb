@@ -89,18 +89,18 @@ module Rhubarb
     # Mark this row as dirty so that any other objects backed by this row will 
     # update from the database before their attributes are inspected
     def mark_dirty
-      self.class.dirtied[@row_id] = TimeUtil::timestamp
+      self.class.dirtied[@row_id] = Util::timestamp
     end
 
     # Mark this row as consistent with the underlying database as of now
     def mark_fresh
-      @expired_after = TimeUtil::timestamp
+      @expired_after = Util::timestamp
     end
 
     # Helper method to update the row in the database when one of our fields changes
     def update(attr_name, value)
       mark_dirty
-      self.db.execute("update #{self.class.table_name} set #{attr_name} = ?, updated = ? where row_id = ?", value, TimeUtil::timestamp, @row_id)
+      self.db.execute("update #{self.class.table_name} set #{attr_name} = ?, updated = ? where row_id = ?", value, Util::timestamp, @row_id)
     end
 
     # Resolve any fields that reference other tables, replacing row ids with referred objects
