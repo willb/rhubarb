@@ -1,6 +1,23 @@
 require 'rubygems'
 require 'rake'
 
+begin 
+  require 'metric_fu'
+  MetricFu::Configuration.run do |config|
+    #define which metrics you want to use
+    config.metrics  = [:flog, :flay, :reek, :roodi]
+    config.graphs   = [:flog, :flay, :reek, :roodi]
+    config.flay     = { :dirs_to_flay => ['lib'],
+                          :minimum_score => 10  } 
+    config.flog     = { :dirs_to_flog => ['lib']  }
+    config.reek     = { :dirs_to_reek => ['lib']  }
+    config.roodi    = { :dirs_to_roodi => ['lib'] }
+    config.graph_engine = :bluff
+  end
+rescue LoadError
+  nil
+end
+
 begin
   require 'jeweler'
   Jeweler::Tasks.new do |gem|
