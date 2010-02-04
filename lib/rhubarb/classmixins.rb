@@ -112,16 +112,7 @@ module Rhubarb
 
     # Declares a query method named +name+ and adds it to this class.  The query method returns a list of objects corresponding to the rows returned by executing "+SELECT * FROM+ _table_ +WHERE+ _query_" on the database.
     def declare_query(name, query)
-      klass = (class << self; self end)
-      klass.class_eval do
-        define_method name.to_s do |*args|
-          # handle reference parameters
-          args = args.map {|x| (x.row_id if x.class.ancestors.include? Persisting) or x}
-
-          res = self.db.execute("select * from #{table_name} where #{query}", args)
-          res.map {|row| self.new(row)}        
-        end
-      end
+      declare_custom_query(name, "select * from __TABLE__ where #{query}")
     end
 
     # Declares a custom query method named +name+, and adds it to this class.  The custom query method returns a list of objects corresponding to the rows returned by executing +query+ on the database.  +query+ should select all fields (with +SELECT *+).  If +query+ includes the string +\_\_TABLE\_\_+, it will be expanded to the table name.  Typically, you will want to use +declare\_query+ instead; this method is most useful for self-joins.
