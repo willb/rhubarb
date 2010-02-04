@@ -13,10 +13,16 @@
 require 'time'
 
 module Rhubarb
-  module TimeUtil
+  module Util
+    # A higher-resolution timestamp
     def self.timestamp(tm=nil)
       tm ||= Time.now.utc
       (tm.tv_sec * 1000000) + tm.tv_usec
+    end
+
+    # Identity for objects that may be used as foreign keys
+    def self.rhubarb_fk_identity(object)
+      (object.row_id if object.class.ancestors.include? Persisting) || object
     end
   end
 end
