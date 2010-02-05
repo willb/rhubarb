@@ -1,5 +1,5 @@
 %{!?ruby_sitelib: %global ruby_sitelib %(ruby -rrbconfig -e 'puts Config::CONFIG["sitelibdir"] ')}
-%define rel 0.1
+%define rel 0.2
 
 Summary: Simple versioned object-graph persistence layer
 Name: ruby-rhubarb
@@ -26,6 +26,10 @@ instances of specially-declared Ruby classes in a SQLite3 database
 %install
 rm -rf %{buildroot}
 mkdir -p %{buildroot}/%{ruby_sitelib}/rhubarb
+mkdir -p %{buildroot}/%{ruby_sitelib}/rhubarb/mixins
+cp -f lib/rhubarb/rhubarb.rb %{buildroot}/%{ruby_sitelib}/rhubarb
+cp -f lib/rhubarb/classmixins.rb %{buildroot}/%{ruby_sitelib}/rhubarb
+cp -f lib/rhubarb/column.rb %{buildroot}/%{ruby_sitelib}/rhubarb
 cp -f lib/rhubarb/rhubarb.rb %{buildroot}/%{ruby_sitelib}/rhubarb
 
 %clean
