@@ -4,6 +4,7 @@
 * Bring code coverage up to 100%
 * Documentation
 * Standalone examples (i.e. not just "please see the test suite")
+* Resolve issues related to using prepared statements
 
 Legend:
 

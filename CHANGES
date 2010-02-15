@@ -1,4 +1,15 @@
-version 0.2.0
+version 0.2.1
+
+*  Code cleanups
+
+*  Performance improvements
+
+*  Rhubarb now no longer uses explicit transactions internally.  I have
+   become convinced that Rhubarb's use of transactions was overly
+   cautious; removing these enables Rhubarb users to use transactions
+   in their own code.
+
+version 0.2.0 (eecc7cceda993ea9c20cd952aa709ebe470a9f3d)
 
 *  First standalone release of Rhubarb.  Previous releases are included
    with SPQR.
