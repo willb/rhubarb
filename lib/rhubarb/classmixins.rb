@@ -59,7 +59,10 @@ module Rhubarb
 
     # Does what it says on the tin.  Since this will allocate an object for each row, it isn't recomended for huge tables.
     def find_all
-      self.db.execute("SELECT * from #{table_name}").map {|tup| self.new(tup)}
+      results = []
+      @find_all_stmt ||= db.prepare("SELECT * from #{table_name}")
+      @find_all_stmt.execute! {|tup| results << self.new(tup)}
+      results
     end
 
     def delete_all
@@ -205,8 +208,8 @@ module Rhubarb
         new_row[column] = Util::rhubarb_fk_identity(value)
       end
 
-      stmt = "insert into #{table_name} (#{colspec}) values (#{valspec})"
-      db.execute(stmt, new_row)
+      @create_stmt ||= db.prepare("insert into #{table_name} (#{colspec}) values (#{valspec})")
+      @create_stmt.execute(new_row)
       res = find(db.last_insert_row_id)
       
       res
@@ -264,8 +267,8 @@ module Rhubarb
       self.db.get_first_value("select count(row_id) from #{table_name}").to_i
     end
 
-    def find_tuple(id)
-      self.db.get_first_row("select * from #{table_name} where row_id = ?", id)
+    def find_tuple(tid)
+      self.db.get_first_row("select * from #{table_name} where row_id = ?", tid)
     end
     
     include FindFreshest

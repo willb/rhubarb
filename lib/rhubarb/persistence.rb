@@ -24,6 +24,7 @@ module Rhubarb
       def setup_db(db)
         db.results_as_hash = true
         db.type_translation = true
+        db.busy_timeout(150)
       end
     end
     
