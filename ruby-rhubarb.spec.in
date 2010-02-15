@@ -1,9 +1,9 @@
 %{!?ruby_sitelib: %global ruby_sitelib %(ruby -rrbconfig -e 'puts Config::CONFIG["sitelibdir"] ')}
-%define rel 0.3
+%define rel 0.1
 
 Summary: Simple versioned object-graph persistence layer
 Name: ruby-rhubarb
-Version: 0.2.0
+Version: RHUBARB_VERSION
 Release: %{rel}%{?dist}
 Group: Applications/System
 License: ASL 2.0
