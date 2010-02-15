@@ -205,11 +205,10 @@ module Rhubarb
         new_row[column] = Util::rhubarb_fk_identity(value)
       end
 
-      self.db.transaction do |db|
-        stmt = "insert into #{table_name} (#{colspec}) values (#{valspec})"
-        db.execute(stmt, new_row)
-        res = find(db.last_insert_row_id)
-      end
+      stmt = "insert into #{table_name} (#{colspec}) values (#{valspec})"
+      db.execute(stmt, new_row)
+      res = find(db.last_insert_row_id)
+      
       res
     end
 
