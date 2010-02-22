@@ -11,8 +11,7 @@
 # 
 #     http://www.apache.org/licenses/LICENSE-2.0
 
-require 'rhubarb/rhubarb'
-require 'test/unit'
+require 'helper'
 
 class TestClass 
   include Rhubarb::Persisting  
@@ -88,6 +87,11 @@ class FreshTestTable
   declare_column :fum, :integer
 end
 
+class BlobTestTable 
+  include Rhubarb::Persisting
+  declare_column :info, :blob
+end
+
 class BackendBasicTests < Test::Unit::TestCase
   def setup
     Rhubarb::Persistence::open(":memory:")
@@ -101,6 +105,7 @@ class BackendBasicTests < Test::Unit::TestCase
     klasses << ToRef
     klasses << FromRef
     klasses << FreshTestTable
+    klasses << BlobTestTable
     klasses << RhubarbNamespace::NMTC
     klasses << RhubarbNamespace::NMTC2
 
@@ -629,4 +634,25 @@ class BackendBasicTests < Test::Unit::TestCase
       end
     end
   end
+  
+  def test_blob_data
+    words = %w{the quick brown fox jumps over a lazy dog now is time for all good men to come aid party jackdaws love my big sphinx of quartz}
+    text = ""
+    (0..300).each do 
+      text << words[rand(words.length)] << " "
+    end
+    
+    compressed_text = Zlib::Deflate.deflate(text)
+    
+    row = BlobTestTable.create(:info => text)
+    
+    crow = BlobTestTable.create(:info => compressed_text)
+    
+    btrow = BlobTestTable.find(row.row_id)
+    cbtrow = BlobTestTable.find(crow.row_id)
+    
+    assert_equal(text, btrow.info)
+    assert_equal(text, Zlib::Inflate.inflate(cbtrow.info))
+  end
+
 end
