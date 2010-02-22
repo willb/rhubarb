@@ -1,4 +1,12 @@
-version 0.2.1
+version 0.2.2
+
+*  explicit support for :blob-typed columns (blob values will be
+   appropriately stored in create statements and attribute assignments).
+   Note that it is still not possible to search for rows based on the
+   value in a blob-valued column.
+*  equality and hash methods (both based on class and row identity).
+
+version 0.2.1 (97339238fbca0116b686f64343d479d15af8a03f)
 
 *  Code cleanups
 
