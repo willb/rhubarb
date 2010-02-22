@@ -5,6 +5,10 @@
 * Documentation
 * Standalone examples (i.e. not just "please see the test suite")
 * Resolve issues related to using prepared statements
+* Find rows by value of blob-valued field
+* Automatic zlib compression of blobs (:zblob type)
+* Automatic yaml serialization of arbitrary Ruby objects (:rubyobj type)
+* Refactor column value transformations (e.g. for foreign-key rows, blobs, [future] zblob/rubyobj, etc.) to be more regular and uniform
 
 Legend:
 
