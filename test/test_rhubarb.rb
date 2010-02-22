@@ -559,6 +559,26 @@ class BackendBasicTests < Test::Unit::TestCase
     end
     
   end
+  
+  def test_equality
+    tc1 = TestClass.create(:foo=>1, :bar=>"hello")
+    tc2 = TestClass.create(:foo=>1, :bar=>"hello")
+    tc3 = TestClass.create(:foo=>2, :bar=>"goodbye")
+    
+    tc1p = TestClass.find(tc1.row_id)
+    
+    assert_equal(tc1, tc1)         # equality is reflexive
+    assert_equal(tc1p, tc1)        # even after find operations
+    assert_equal(tc1, tc1p)        # ... and it should be symmetric
+    assert_not_equal(tc1, tc2)     # these are not identical
+    assert_not_equal(tc1p, tc2)    # even after find operations
+    assert_not_equal(tc2, tc1p)    # ... and it should be symmetric
+    assert_not_same(tc1, tc2)      # but these are not identical
+    assert_not_equal(tc1, tc3)     # these aren't even equal!
+    assert_not_equal(tc2, tc3)     # neither are these
+    assert_not_equal(tc3, tc1)     # and inequality should hold
+    assert_not_equal(tc3, tc2)     #   under symmetry
+  end
 
   def freshness_query_fixture
     @flist = []
