@@ -11,7 +11,6 @@
 # 
 #     http://www.apache.org/licenses/LICENSE-2.0
 
-require 'rubygems'
 require 'set'
 require 'sqlite3'
 require 'rhubarb/util'
