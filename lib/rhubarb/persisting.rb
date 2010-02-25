@@ -34,7 +34,17 @@ module Rhubarb
       freshen
       not @tuple
     end
-
+    
+    def hash
+      freshen
+      @row_id ^ self.class.table_name.hash
+    end
+    
+    def ==(other)
+      freshen
+      self.class == other.class && other.row_id == self.row_id
+    end
+      
     # Initializes a new instance backed by a tuple of values.  Do not call this directly. 
     # Create new instances with the create or find methods.
     def initialize(tup)

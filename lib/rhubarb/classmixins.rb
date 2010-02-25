@@ -131,6 +131,7 @@ module Rhubarb
       end
 
       self.colnames.merge([cname])
+      self.colkinds[cname] = kind
       self.columns << Column.new(cname, kind, quals)
 
       # add accessors
@@ -141,8 +142,14 @@ module Rhubarb
       end
 
       if not rf
+        xform = nil
+        
+        if kind == :blob
+          xform = Util::blobify_proc
+        end
+        
         define_method set_method_name do |arg|
-          @tuple["#{cname}"] = arg
+          @tuple["#{cname}"] = xform ? xform.call(arg) : arg
           update cname, arg
         end      
       else
@@ -205,7 +212,7 @@ module Rhubarb
 
       # resolve any references in the args
       new_row.each do |column,value|
-        new_row[column] = Util::rhubarb_fk_identity(value)
+        new_row[column] = colkinds[column] == :blob ? Util::blobify(value) : Util::rhubarb_fk_identity(value)
       end
 
       @create_stmt ||= db.prepare("insert into #{table_name} (#{colspec}) values (#{valspec})")
@@ -249,7 +256,7 @@ module Rhubarb
           # The API purposefully does not expose the ability to create a
           # row with a given id, and created and updated values are
           # maintained automatically by the API.
-          attr_accessor :columns, :colnames, :constraints, :dirtied, :refs, :creation_callbacks
+          attr_accessor :columns, :colnames, :colkinds, :constraints, :dirtied, :refs, :creation_callbacks
         end
       end
 
@@ -257,6 +264,7 @@ module Rhubarb
       self.columns ||= [Column.new(:row_id, :integer, [:primary_key]), Column.new(:created, :integer, []), Column.new(:updated, :integer, [])]
       self.colnames ||= Set.new [:created, :updated]
       self.constraints ||= []
+      self.colkinds ||= {}
       self.dirtied ||= {}
       self.refs ||= {}
       self.creation_callbacks ||= []
