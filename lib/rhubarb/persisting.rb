@@ -37,7 +37,7 @@ module Rhubarb
     
     def hash
       freshen
-      @row_id ^ self.table_name.hash
+      @row_id ^ self.class.table_name.hash
     end
     
     def ==(other)
