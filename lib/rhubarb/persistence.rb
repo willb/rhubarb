@@ -25,6 +25,12 @@ module Rhubarb
         db.results_as_hash = true
         db.type_translation = true
         db.busy_timeout(150)
+        class << db
+          def stmts
+            @rhubarb_stmts ||= {}
+            @rhubarb_stmts
+          end
+        end
       end
     end
     
@@ -35,9 +41,11 @@ module Rhubarb
     end
   
     def self.close(which=:default)
-      if dbs[which]
-        dbs[which].close
+      current_db = dbs[which]
+      if current_db
         dbs.delete(which)
+        current_db.stmts.values.each {|pstmt| pstmt.close }
+        current_db.close
       end
     end
   

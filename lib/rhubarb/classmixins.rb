@@ -53,15 +53,17 @@ module Rhubarb
       valid_cols = self.colnames.intersection arg_hash.keys
       select_criteria = valid_cols.map {|col| "#{col.to_s} = #{col.inspect}"}.join(" AND ")
       arg_hash.each {|k,v| arg_hash[k] = v.row_id if v.respond_to? :row_id}
-
-      self.db.execute("select * from #{table_name} where #{select_criteria} order by row_id", arg_hash).map {|tup| self.new(tup) }
+      find_by_text = "select * from #{table_name} where #{select_criteria} order by row_id"
+      find_by_stmt = (db.stmts[find_by_text] ||= db.prepare(find_by_text))
+      find_by_stmt.execute!(arg_hash).map {|tup| self.new(tup) }
     end
 
     # Does what it says on the tin.  Since this will allocate an object for each row, it isn't recomended for huge tables.
     def find_all
       results = []
-      @find_all_stmt ||= db.prepare("SELECT * from #{table_name}")
-      @find_all_stmt.execute! {|tup| results << self.new(tup)}
+      find_all_text = "SELECT * from #{table_name}"
+      find_all_stmt = (db.stmts[find_all_text] ||= db.prepare(find_all_text))
+      find_all_stmt.execute! {|tup| results << self.new(tup)}
       results
     end
 
@@ -81,8 +83,10 @@ module Rhubarb
         define_method name.to_s do |*args|
           # handle reference parameters
           args = args.map {|arg| Util::rhubarb_fk_identity(arg)}
-
-          res = self.db.execute(query.gsub("__TABLE__", "#{self.table_name}"), args)
+          cq_text = query.gsub("__TABLE__", "#{self.table_name}")
+          cq_stmt = (db.stmts[cq_text] ||= db.prepare(cq_text))
+          
+          res = cq_stmt.execute!(args)
           res.map {|row| self.new(row) }        
         end
       end
@@ -215,8 +219,9 @@ module Rhubarb
         new_row[column] = colkinds[column] == :blob ? Util::blobify(value) : Util::rhubarb_fk_identity(value)
       end
 
-      @create_stmt ||= db.prepare("insert into #{table_name} (#{colspec}) values (#{valspec})")
-      @create_stmt.execute(new_row)
+      create_text = "insert into #{table_name} (#{colspec}) values (#{valspec})"
+      create_stmt = (self.db.stmts[create_text] ||= db.prepare(create_text))
+      create_stmt.execute!(new_row)
       res = find(db.last_insert_row_id)
       
       res
