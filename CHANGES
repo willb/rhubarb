@@ -1,4 +1,13 @@
-version 0.2.2
+version 0.2.3
+
+*  Rhubarb now uses prepared statements almost exclusively.  This
+   should result in an appreciable speedup (I observed around 10% on
+   the test suite; a large rhubarb-based application I have previously
+   spent over 12% of runtime preparing one-off statemtents).
+
+*  Fixed a crashing bug introduced in 0.2.2.
+
+version 0.2.2 (8859efbbbca5e80d64e3bd8e6e5ba2ffd8a3e83d)
 
 *  explicit support for :blob-typed columns (blob values will be
    appropriately stored in create statements and attribute assignments).
