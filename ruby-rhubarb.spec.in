@@ -1,5 +1,5 @@
 %{!?ruby_sitelib: %global ruby_sitelib %(ruby -rrbconfig -e 'puts Config::CONFIG["sitelibdir"] ')}
-%define rel 2.0
+%define rel 1.0
 
 Summary: Simple versioned object-graph persistence layer
 Name: ruby-rhubarb
@@ -48,6 +48,9 @@ rm -rf %{buildroot}
 %{ruby_sitelib}/rhubarb/persistence.rb
 
 %changelog
+* Thu Feb 25 2010 willb <willb@redhat> - 0.2.3-1.0
+* updated to version 0.2.3 from source
+
 * Thu Feb 25 2010 willb <willb@redhat> - 0.2.2-2.0
 * removed rubygems include 
 
