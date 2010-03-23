@@ -109,7 +109,7 @@ module Rhubarb
 
       find_method_name = "find_by_#{cname}".to_sym
       find_first_method_name = "find_first_by_#{cname}".to_sym
-      find_query = "select * from #{table_name} where #{cname} = ?"
+      find_query = "select * from #{table_name} where #{cname} = ? order by row_id"
 
       get_method_name = "#{cname}".to_sym
       set_method_name = "#{cname}=".to_sym
@@ -124,13 +124,16 @@ module Rhubarb
       klass = (class << self; self end)
       klass.class_eval do 
         define_method find_method_name do |arg|
-          res = self.db.execute(find_query, arg)
+          fq_stmt = (self.db.stmts[find_query] ||= db.prepare(find_query))
+          res = fq_stmt.execute!(arg)
           res.map {|row| self.new(row)}
         end
 
         define_method find_first_method_name do |arg|
-          res = self.db.get_first_row(find_query, arg)
-          res ? self.new(res) : nil
+          fq_stmt = (self.db.stmts[find_query] ||= db.prepare(find_query))
+          result = nil
+          fq_stmt.execute!(arg) {|row| result = self.new(row) ; break }
+          result
         end
       end
 
