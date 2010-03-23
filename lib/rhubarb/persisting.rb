@@ -70,6 +70,14 @@ module Rhubarb
       @row_id = nil
     end
 
+    def to_hash
+      result = {}
+      @tuple.each_pair do |key, value|
+        result[key.to_sym] = value unless key.class == Fixnum
+      end
+      result
+    end
+
     ## Begin private methods
 
     private
@@ -132,6 +140,5 @@ module Rhubarb
         end
       end
     end
-
   end
 end

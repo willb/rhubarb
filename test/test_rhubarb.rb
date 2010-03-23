@@ -172,6 +172,21 @@ class BackendBasicTests < Test::Unit::TestCase
     end
   end
   
+  def test_to_hash
+    (0..5).each do |foo|
+      ("A".."C").each do |bar|
+        TestClass.create(:foo=>foo, :bar=>bar)
+      end
+    end
+    
+    TestClass.find_all.each do |tc|
+      tch = tc.to_hash
+      [:foo,:bar,:created,:updated].each do |msg|
+        assert_equal(tch[msg], tc.send(msg))
+      end
+    end      
+  end
+  
   def test_delete_where
     (0..10).each do |foo|
       ("A".."G").each do |bar|
