@@ -68,7 +68,9 @@ module Rhubarb
     end
 
     def delete_all
-      self.db.execute("DELETE from #{table_name}")
+      da_text = "DELETE from #{table_name}"
+      da_stmt = (db.stmts[da_text] ||= db.prepare(da_text))
+      da_stmt.execute!
     end
 
     # Declares a query method named +name+ and adds it to this class.  The query method returns a list of objects corresponding to the rows returned by executing "+SELECT * FROM+ _table_ +WHERE+ _query_" on the database.
