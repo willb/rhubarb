@@ -171,6 +171,26 @@ class BackendBasicTests < Test::Unit::TestCase
       end
     end
   end
+  
+  def test_delete_where
+    (0..10).each do |foo|
+      ("A".."G").each do |bar|
+        TestClass.create(:foo=>foo, :bar=>bar)
+      end
+    end
+    
+    old_count = TestClass.count
+    
+    TestClass.delete_where(:foo=>1, :bar=>"B")
+    
+    assert_equal(old_count - 1, TestClass.count)
+    assert_equal([], TestClass.find_by(:foo=>1, :bar=>"B"))
+    
+    TestClass.delete_where(:bar=>"C")
+    assert_equal(old_count - 12, TestClass.count)
+    assert_equal([], TestClass.find_by(:bar=>"C"))
+    
+  end
 
   def test_instance_methods_dont_include_class_methods
     ["foo", "bar"].each do |prefix|

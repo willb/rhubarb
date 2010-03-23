@@ -73,6 +73,16 @@ module Rhubarb
       da_stmt.execute!
     end
 
+    def delete_where(arg_hash)
+      arg_hash = arg_hash.dup
+      valid_cols = self.colnames.intersection arg_hash.keys
+      select_criteria = valid_cols.map {|col| "#{col.to_s} = #{col.inspect}"}.join(" AND ")
+      arg_hash.each {|k,v| arg_hash[k] = v.row_id if v.respond_to? :row_id}
+      dw_text = "DELETE FROM #{table_name} WHERE #{select_criteria}"
+      dw_stmt = (db.stmts[dw_text] ||= db.prepare(dw_text))
+      dw_stmt.execute!(arg_hash)
+    end
+
     # Declares a query method named +name+ and adds it to this class.  The query method returns a list of objects corresponding to the rows returned by executing "+SELECT * FROM+ _table_ +WHERE+ _query_" on the database.
     def declare_query(name, query)
       declare_custom_query(name, "select * from __TABLE__ where #{query}")
