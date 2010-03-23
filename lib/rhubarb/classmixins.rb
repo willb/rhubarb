@@ -281,7 +281,9 @@ module Rhubarb
     end
 
     def find_tuple(tid)
-      self.db.get_first_row("select * from #{table_name} where row_id = ?", tid)
+      ft_text = "select * from #{table_name} where row_id = ?"
+      ft_stmt = (self.db.stmts[ft_text] ||= db.prepare(ft_text))
+      return ft_stmt.execute!(tid)[0]
     end
     
     include FindFreshest
