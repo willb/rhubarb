@@ -1,4 +1,15 @@
-version 0.2.3
+version 0.2.4
+
+*  More aggressive use of prepared statements, which should result 
+   in more speedups.  (In particular, finding tuples by identity now
+   uses a prepared statement.)
+
+*  Persisting#to_hash method added.
+
+*  delete_where method added to persisting classes; it enables deleting 
+   many rows satisfying some criterion in a single query.
+
+version 0.2.3 (20bee926a142d505441716762a72a82cbfb87378)
 
 *  Rhubarb now uses prepared statements almost exclusively.  This
    should result in an appreciable speedup (I observed around 10% on
