@@ -48,11 +48,14 @@ rm -rf %{buildroot}
 %{ruby_sitelib}/rhubarb/persistence.rb
 
 %changelog
+* Wed Apr 7 2010 willb <willb@redhat> - 0.2.4-1.0
+- Updated to version 0.2.4
+
 * Thu Feb 25 2010 willb <willb@redhat> - 0.2.3-1.0
-* updated to version 0.2.3 from source
+- updated to version 0.2.3 from source
 
 * Thu Feb 25 2010 willb <willb@redhat> - 0.2.2-2.0
-* removed rubygems include 
+- removed rubygems include 
 
 * Fri Feb  5 2010  <rrat@redhat> - 0.2.0-0.3
 - Explicitly list files
