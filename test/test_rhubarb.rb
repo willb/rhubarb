@@ -12,6 +12,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 
 require 'helper'
+require 'fileutils'
 
 class TestClass 
   include Rhubarb::Persisting  
@@ -92,9 +93,17 @@ class BlobTestTable
   declare_column :info, :blob
 end
 
-class BackendBasicTests < Test::Unit::TestCase
+class BackendBasicTests < Test::Unit::TestCase  
+  def dbfile
+    ENV['RHUBARB_TEST_DB'] || ":memory:"
+  end
+
   def setup
-    Rhubarb::Persistence::open(":memory:")
+    unless dbfile == ":memory:"
+      FileUtils::safe_unlink(dbfile)
+    end
+
+    Rhubarb::Persistence::open(dbfile)
     klasses = []
     klasses << TestClass
     klasses << TestClass2
@@ -214,6 +223,13 @@ class BackendBasicTests < Test::Unit::TestCase
         assert(bogus_include == false, "#{m} method declared in TestClass; shouldn't be")
       end
     end
+  end
+
+  def test_delete_all
+    freshness_query_fixture
+    assert(FreshTestTable.find_all.size > 0)
+    FreshTestTable.delete_all
+    assert_equal([], FreshTestTable.find_all)
   end
 
   def test_class_methods
