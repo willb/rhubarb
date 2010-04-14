@@ -10,10 +10,29 @@
 # 
 #     http://www.apache.org/licenses/LICENSE-2.0
 
-module Rhubarb
+module Rhubarb  
+  
   module Persistence
+    module UsePreparedStatements
+      def do_query(stmt, *args, &blk)
+        the_stmt = (self.stmts[stmt] ||= self.prepare(stmt))
+        the_stmt.execute!(args, &blk)
+      end
+    end
+    
+    module EschewPreparedStatements
+      def do_query(stmt, *args, &blk)
+        execute(stmt, args, &blk)
+      end
+    end
+    
     class DbCollection < Hash
       alias orig_set []=
+      attr_accessor :use_prepared_stmts
+      
+      def initialize
+        self.use_prepared_stmts = true
+      end
       
       def []=(key,db)
         setup_db(db) if db
@@ -31,12 +50,23 @@ module Rhubarb
             @rhubarb_stmts
           end
         end
+        
+        if @use_prepared_stmts
+          class << db
+            include UsePreparedStatements
+          end
+        else
+          class << db
+            include EschewPreparedStatements
+          end
+        end
       end
     end
     
     @dbs = DbCollection.new
     
-    def self.open(filename, which=:default)
+    def self.open(filename, which=:default, usePrepared=true)
+      dbs.use_prepared_stmts = usePrepared
       dbs[which] = SQLite3::Database.new(filename)
     end
   

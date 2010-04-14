@@ -62,9 +62,7 @@ module Rhubarb
     # Deletes the row corresponding to this object from the database; 
     # invalidates =self= and any other objects backed by this row
     def delete
-      delete_text = "delete from #{self.class.table_name} where row_id = ?"
-      delete_stmt = (self.db.stmts[delete_text] ||= self.db.prepare(delete_text))
-      delete_stmt.execute!(@row_id)
+      db.do_query("delete from #{self.class.table_name} where row_id = ?", @row_id)
       mark_dirty
       @tuple = nil
       @row_id = nil
@@ -121,9 +119,7 @@ module Rhubarb
     def update(attr_name, value)
       mark_dirty
 
-      update_text = "update #{self.class.table_name} set #{attr_name} = ?, updated = ? where row_id = ?"
-      update_stmt = (self.db.stmts[update_text] ||= self.db.prepare(update_text))
-      update_stmt.execute!(value, Util::timestamp, @row_id)
+      db.do_query("update #{self.class.table_name} set #{attr_name} = ?, updated = ? where row_id = ?", value, Util::timestamp, @row_id)
     end
 
     # Resolve any fields that reference other tables, replacing row ids with referred objects

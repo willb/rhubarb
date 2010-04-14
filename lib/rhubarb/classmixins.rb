@@ -49,28 +49,24 @@ module Rhubarb
     alias find_by_id find
 
     def find_by(arg_hash)
+      results = []
       arg_hash = arg_hash.dup
       valid_cols = self.colnames.intersection arg_hash.keys
       select_criteria = valid_cols.map {|col| "#{col.to_s} = #{col.inspect}"}.join(" AND ")
       arg_hash.each {|k,v| arg_hash[k] = v.row_id if v.respond_to? :row_id}
-      find_by_text = "select * from #{table_name} where #{select_criteria} order by row_id"
-      find_by_stmt = (db.stmts[find_by_text] ||= db.prepare(find_by_text))
-      find_by_stmt.execute!(arg_hash).map {|tup| self.new(tup) }
+      db.do_query("select * from #{table_name} where #{select_criteria} order by row_id", arg_hash) {|tup| results << self.new(tup) }
+      results
     end
 
     # Does what it says on the tin.  Since this will allocate an object for each row, it isn't recomended for huge tables.
     def find_all
       results = []
-      find_all_text = "SELECT * from #{table_name}"
-      find_all_stmt = (db.stmts[find_all_text] ||= db.prepare(find_all_text))
-      find_all_stmt.execute! {|tup| results << self.new(tup)}
+      db.do_query("SELECT * from #{table_name}") {|tup| results << self.new(tup)}
       results
     end
 
     def delete_all
-      da_text = "DELETE from #{table_name}"
-      da_stmt = (db.stmts[da_text] ||= db.prepare(da_text))
-      da_stmt.execute!
+      db.do_query("DELETE from #{table_name}")
     end
 
     def delete_where(arg_hash)
@@ -78,9 +74,7 @@ module Rhubarb
       valid_cols = self.colnames.intersection arg_hash.keys
       select_criteria = valid_cols.map {|col| "#{col.to_s} = #{col.inspect}"}.join(" AND ")
       arg_hash.each {|k,v| arg_hash[k] = v.row_id if v.respond_to? :row_id}
-      dw_text = "DELETE FROM #{table_name} WHERE #{select_criteria}"
-      dw_stmt = (db.stmts[dw_text] ||= db.prepare(dw_text))
-      dw_stmt.execute!(arg_hash)
+      db.do_query("DELETE FROM #{table_name} WHERE #{select_criteria}", arg_hash)
     end
 
     # Declares a query method named +name+ and adds it to this class.  The query method returns a list of objects corresponding to the rows returned by executing "+SELECT * FROM+ _table_ +WHERE+ _query_" on the database.
@@ -91,15 +85,16 @@ module Rhubarb
     # Declares a custom query method named +name+, and adds it to this class.  The custom query method returns a list of objects corresponding to the rows returned by executing +query+ on the database.  +query+ should select all fields (with +SELECT *+).  If +query+ includes the string +\_\_TABLE\_\_+, it will be expanded to the table name.  Typically, you will want to use +declare\_query+ instead; this method is most useful for self-joins.
     def declare_custom_query(name, query)
       klass = (class << self; self end)
+      processed_query = query.gsub("__TABLE__", "#{self.table_name}")
+      
       klass.class_eval do
         define_method name.to_s do |*args|
           # handle reference parameters
           args = args.map {|arg| Util::rhubarb_fk_identity(arg)}
-          cq_text = query.gsub("__TABLE__", "#{self.table_name}")
-          cq_stmt = (db.stmts[cq_text] ||= db.prepare(cq_text))
           
-          res = cq_stmt.execute!(args)
-          res.map {|row| self.new(row) }        
+          results = []
+          db.do_query(processed_query, args) {|tup| results << self.new(tup)}
+          results
         end
       end
     end
@@ -136,15 +131,14 @@ module Rhubarb
       klass = (class << self; self end)
       klass.class_eval do 
         define_method find_method_name do |arg|
-          fq_stmt = (self.db.stmts[find_query] ||= db.prepare(find_query))
-          res = fq_stmt.execute!(arg)
-          res.map {|row| self.new(row)}
+          results = []
+          db.do_query(find_query, arg) {|row| results << self.new(row)}
+          results
         end
 
         define_method find_first_method_name do |arg|
-          fq_stmt = (self.db.stmts[find_query] ||= db.prepare(find_query))
           result = nil
-          fq_stmt.execute!(arg) {|row| result = self.new(row) ; break }
+          db.do_query(find_query, arg) {|row| result = self.new(row) ; break }
           result
         end
       end
@@ -235,8 +229,8 @@ module Rhubarb
       end
 
       create_text = "insert into #{table_name} (#{colspec}) values (#{valspec})"
-      create_stmt = (self.db.stmts[create_text] ||= db.prepare(create_text))
-      create_stmt.execute!(new_row)
+      db.do_query(create_text, new_row)
+      
       res = find(db.last_insert_row_id)
       
       res
@@ -297,8 +291,9 @@ module Rhubarb
 
     def find_tuple(tid)
       ft_text = "select * from #{table_name} where row_id = ?"
-      ft_stmt = (self.db.stmts[ft_text] ||= db.prepare(ft_text))
-      return ft_stmt.execute!(tid)[0]
+      result = nil
+      db.do_query(ft_text, tid) {|tup| result = tup; break}
+      result
     end
     
     include FindFreshest

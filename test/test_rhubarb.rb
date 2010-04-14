@@ -93,9 +93,13 @@ class BlobTestTable
   declare_column :info, :blob
 end
 
-class BackendBasicTests < Test::Unit::TestCase  
+class PreparedStmtBackendTests < Test::Unit::TestCase  
   def dbfile
     ENV['RHUBARB_TEST_DB'] || ":memory:"
+  end
+  
+  def use_prepared
+    true
   end
 
   def setup
@@ -103,7 +107,7 @@ class BackendBasicTests < Test::Unit::TestCase
       FileUtils::safe_unlink(dbfile)
     end
 
-    Rhubarb::Persistence::open(dbfile)
+    Rhubarb::Persistence::open(dbfile, :default, use_prepared)
     klasses = []
     klasses << TestClass
     klasses << TestClass2
@@ -726,4 +730,10 @@ class BackendBasicTests < Test::Unit::TestCase
     assert_equal(text, Zlib::Inflate.inflate(cbtrow.info))
   end
 
+end
+
+class NoPreparedStmtBackendTests < PreparedStmtBackendTests  
+  def use_prepared
+    false
+  end
 end
