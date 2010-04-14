@@ -48,6 +48,9 @@ rm -rf %{buildroot}
 %{ruby_sitelib}/rhubarb/persistence.rb
 
 %changelog
+* Wed Apr 14 2010 willb <willb@redhat> - 0.2.5-1.0
+- Updated to version 0.2.5
+
 * Wed Apr 7 2010 willb <willb@redhat> - 0.2.4-1.0
 - Updated to version 0.2.4
 
