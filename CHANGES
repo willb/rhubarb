@@ -1,3 +1,9 @@
+version 0.2.5
+
+*  Prepared statements are now optional to eliminate a strange bug
+   that appears in some environments.  If you experience unusual table
+   locking errors, try running without prepared statements.
+
 version 0.2.4
 
 *  More aggressive use of prepared statements, which should result 
