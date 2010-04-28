@@ -1,3 +1,15 @@
+version 0.2.6
+
+*  Rhubarb now supports starting arbitrary Ruby objects to fields 
+   of type :object --- these are serialized to yaml and gzipped 
+   before they enter the database.  At the moment, you cannot change
+   such an object in place (accessing a field of type :object will
+   return a frozen object); to change the value of an object field 
+   you must dup and reassign.  This will probably change in a future
+   release.
+
+*  Rhubarb now supports storing gzipped blobs in fields of type :zblob.
+
 version 0.2.5
 
 *  Prepared statements are now optional to eliminate a strange bug
