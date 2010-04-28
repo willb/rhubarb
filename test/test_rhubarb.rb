@@ -14,6 +14,9 @@
 require 'helper'
 require 'fileutils'
 
+Customer = Struct.new(:name, :address)
+
+
 class TestClass 
   include Rhubarb::Persisting  
   declare_column :foo, :integer
@@ -93,6 +96,12 @@ class BlobTestTable
   declare_column :info, :blob
 end
 
+class ObjectTestTable 
+  include Rhubarb::Persisting
+  declare_column :otype, :string
+  declare_column :obj, :object
+end
+
 class PreparedStmtBackendTests < Test::Unit::TestCase  
   def dbfile
     ENV['RHUBARB_TEST_DB'] || ":memory:"
@@ -119,6 +128,7 @@ class PreparedStmtBackendTests < Test::Unit::TestCase
     klasses << FromRef
     klasses << FreshTestTable
     klasses << BlobTestTable
+    klasses << ObjectTestTable
     klasses << RhubarbNamespace::NMTC
     klasses << RhubarbNamespace::NMTC2
 
@@ -730,6 +740,39 @@ class PreparedStmtBackendTests < Test::Unit::TestCase
     assert_equal(text, Zlib::Inflate.inflate(cbtrow.info))
   end
 
+  def test_object_data
+    things = []
+    things << "foo"
+    things << {"foo"=>"bar"}
+    things << ["a", "b", "c", "d"]
+    things << [1]
+    things << {"augh"=>1, "blaugh"=>"quux"}
+    things << [] # empty list
+    things << {} # empty hash
+    things << 49 # int
+    things << {"blah"=>{"foo"=>"bar"}, "argh"=>123, "yuck"=>[1,1,2,3,5,[8]]} # heterogeneous and nested hash
+    things << 0.618  # float
+    things << 99**99  # bignum
+    things << [1,[2,[3,4,[5,6,[7,[8,9,10,[11,12,[13]]]]]]]] # ludicrous list nesting
+    things << {"a"=>{"b"=>{"c"=>{"d"=>{"e"=>["f","g","h","i",{"j"=>["k","l",{"m"=>"n"}]}]}}}}} # ludicrous hash nesting
+    things << Time.now.utc # time
+    things << %w{foo bar blah}.to_set
+    things << Customer.new("Barney Rubble", "303 Cobblestone Way")
+    things << /[1-3]+[A-Z]/
+    
+    things.each_with_index do |thing, idx|
+      ObjectTestTable.create(:otype=>thing.class.name.to_s, :obj=>thing)
+    end
+    
+    otts = ObjectTestTable.find_all
+    
+    assert_equal otts.size, things.size
+    
+    things.zip(otts) do |thing, ott|
+      assert_equal thing.class.name.to_s, ott.otype
+      assert_equal thing, ott.obj      
+    end
+  end
 end
 
 class NoPreparedStmtBackendTests < PreparedStmtBackendTests  

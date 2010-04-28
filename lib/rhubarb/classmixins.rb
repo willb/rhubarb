@@ -15,6 +15,8 @@ require 'rhubarb/mixins/freshness'
 module Rhubarb
   # Methods mixed in to the class object of a persisting class
   module PersistingClassMixins 
+    PCM_INPUT_TRANSFORMERS = {:blob=>Util.blobify_proc, :object=>Util.swizzle_object_proc}
+    PCM_OUTPUT_TRANSFORMERS = {:object=>Util.deswizzle_object_proc}
     # Returns the name of the database table modeled by this class.
     # Defaults to the name of the class (sans module names)
     def table_name
@@ -147,19 +149,18 @@ module Rhubarb
       self.colkinds[cname] = kind
       self.columns << Column.new(cname, kind, quals)
 
+      out_xform = PCM_OUTPUT_TRANSFORMERS[kind]
       # add accessors
       define_method get_method_name do
         freshen
-        return @tuple["#{cname}"] if @tuple
-        nil
+        return nil unless @tuple
+        out_xform ? out_xform.call(@tuple[cname.to_s]) : @tuple[cname.to_s]
       end
 
       if not rf
         xform = nil
         
-        if kind == :blob
-          xform = Util::blobify_proc
-        end
+        xform = PCM_INPUT_TRANSFORMERS[kind]
         
         define_method set_method_name do |arg|
           @tuple["#{cname}"] = xform ? xform.call(arg) : arg
@@ -225,7 +226,8 @@ module Rhubarb
 
       # resolve any references in the args
       new_row.each do |column,value|
-        new_row[column] = colkinds[column] == :blob ? Util::blobify(value) : Util::rhubarb_fk_identity(value)
+        xform = PCM_INPUT_TRANSFORMERS[colkinds[column]]
+        new_row[column] = xform ? xform.call(value) : Util::rhubarb_fk_identity(value)
       end
 
       create_text = "insert into #{table_name} (#{colspec}) values (#{valspec})"
