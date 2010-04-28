@@ -40,7 +40,10 @@ module Rhubarb
     end
     
     def self.dezblobify_proc
-      @dezblobify_proc ||= Proc.new {|x| Zlib::Inflate.inflate(x)}
+      @dezblobify_proc ||= Proc.new do |x| 
+        return nil if x.nil? || x == ""
+        Zlib::Inflate.inflate(x)
+      end
     end
     
     def self.swizzle_object_proc

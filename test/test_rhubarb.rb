@@ -96,6 +96,11 @@ class BlobTestTable
   declare_column :info, :blob
 end
 
+class ZBlobTestTable 
+  include Rhubarb::Persisting
+  declare_column :info, :zblob
+end
+
 class ObjectTestTable 
   include Rhubarb::Persisting
   declare_column :otype, :string
@@ -128,6 +133,7 @@ class PreparedStmtBackendTests < Test::Unit::TestCase
     klasses << FromRef
     klasses << FreshTestTable
     klasses << BlobTestTable
+    klasses << ZBlobTestTable
     klasses << ObjectTestTable
     klasses << RhubarbNamespace::NMTC
     klasses << RhubarbNamespace::NMTC2
@@ -739,6 +745,26 @@ class PreparedStmtBackendTests < Test::Unit::TestCase
     assert_equal(text, btrow.info)
     assert_equal(text, Zlib::Inflate.inflate(cbtrow.info))
   end
+
+  def test_zblob_data
+    words = %w{the quick brown fox jumps over a lazy dog now is time for all good men to come aid party jackdaws love my big sphinx of quartz}
+    text = ""
+    (0..300).each do 
+      text << words[rand(words.length)] << " "
+    end
+    
+    compressed_text = Zlib::Deflate.deflate(text)
+    
+    row = ZBlobTestTable.create(:info => text)
+    crow = ZBlobTestTable.create(:info => compressed_text)
+    
+    btrow = ZBlobTestTable.find(row.row_id)
+    cbtrow = ZBlobTestTable.find(crow.row_id)
+    
+    assert_equal(text, btrow.info)
+    assert_equal(text, Zlib::Inflate.inflate(cbtrow.info))
+  end
+
 
   def test_object_data
     things = []
