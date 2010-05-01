@@ -109,6 +109,7 @@ end
 Spec::Rake::SpecTask.new(:rcov) do |spec|
   spec.libs << 'lib' << 'spec'
   spec.pattern = 'spec/**/*_spec.rb'
+  spec.rcov_opts << "-x" << "/usr/lib" << "-x" << ".gem"
   spec.rcov = true
 end
 
@@ -127,6 +128,7 @@ begin
   Rcov::RcovTask.new do |test|
     test.libs << 'test'
     test.pattern = 'test/**/test_*.rb'
+    test.rcov_opts << "-x" << "/usr/lib" << "-x" << ".gem"
     test.verbose = true
   end
 rescue LoadError

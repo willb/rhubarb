@@ -39,23 +39,21 @@ module Rhubarb
       group_by_clause = "GROUP BY " + args[:group_by].join(", ")
       where_clause = "WHERE " + select_clauses.join(" AND ")
       projection = self.colnames - [:created]
-      join_clause = projection.map do |column|
+      join_criteria = projection.map do |column|
         "__fresh.#{column} = __freshest.#{column}"
       end
 
       projection << "MAX(created) AS __current_version"
-      join_clause << "__fresh.__current_version = __freshest.created"
+      join_criteria << "__fresh.__current_version = __freshest.created"
 
+      join_clause = join_criteria.join(' AND ')
+      
       query = "
   SELECT __freshest.* FROM (
     SELECT #{projection.to_a.join(', ')} FROM (
       SELECT * from #{table_name} #{where_clause}
     ) #{group_by_clause}
-  ) as __fresh INNER JOIN #{table_name} as __freshest ON
-    #{join_clause.join(' AND ')}
-    ORDER BY row_id
-  "
-
+  ) as __fresh INNER JOIN #{table_name} as __freshest ON #{join_clause} ORDER BY row_id"
       self.db.execute(query, query_params).map {|tup| self.new(tup) }
     end
   end

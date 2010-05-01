@@ -27,43 +27,35 @@ module Rhubarb
       (object.row_id if object.class.ancestors.include? Persisting) || object
     end
     
-    def self.blobify(obj)
-      blobify_proc.call(obj)
-    end
-    
     def self.blobify_proc
-      @blobify_proc ||= Proc.new {|x| x.is_a?(SQLite3::Blob) ? x : SQLite3::Blob.new(x)}
+      @blobify_proc ||= Proc.new {|obj| obj.is_a?(SQLite3::Blob) ? obj : SQLite3::Blob.new(obj)}
     end
     
     def self.zblobify_proc
-      @zblobify_proc ||= Proc.new {|x| x.is_a?(SQLite3::Blob) ? x : SQLite3::Blob.new(Zlib::Deflate.deflate(x))}
+      @zblobify_proc ||= Proc.new {|obj| obj.is_a?(SQLite3::Blob) ? obj : SQLite3::Blob.new(Zlib::Deflate.deflate(obj))}
     end
     
     def self.dezblobify_proc
-      @dezblobify_proc ||= Proc.new do |x| 
-        return nil if x.nil? || x == ""
-        Zlib::Inflate.inflate(x)
+      @dezblobify_proc ||= Proc.new do |obj| 
+        return nil if obj.nil? || obj == ""
+        Zlib::Inflate.inflate(obj)
       end
     end
     
     def self.swizzle_object_proc
-      @swizzle_object_proc ||= Proc.new do |x| 
-        yamlrepr = x.to_yaml
+      @swizzle_object_proc ||= Proc.new do |obj| 
+        yamlrepr = obj.to_yaml
         SQLite3::Blob.new(Zlib::Deflate.deflate(yamlrepr, Zlib::BEST_COMPRESSION))
       end
     end
 
     def self.deswizzle_object_proc
-      @deswizzle_object_proc ||= Proc.new do |x|
-        return nil if x.nil? || x == ""
+      @deswizzle_object_proc ||= Proc.new do |zy_obj|
+        return nil if zy_obj.nil? || zy_obj == ""
         
-        z = YAML.load(Zlib::Inflate.inflate(x))
-        z.freeze
+        obj = YAML.load(Zlib::Inflate.inflate(zy_obj))
+        obj.freeze
       end
-    end
-
-    def self.identity_proc
-      @identity ||= Proc.new {|x| x}
     end
   end
 end

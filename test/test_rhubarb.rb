@@ -89,6 +89,16 @@ class FreshTestTable
   declare_column :fie, :integer
   declare_column :foe, :integer
   declare_column :fum, :integer
+  declare_column :foo, :integer
+  declare_column :bar, :integer
+  
+  def <=>(other)
+    [:fie,:foe,:fum,:foo,:bar].each do |msg|
+      tmpresult = self.send(msg) <=> other.send(msg)
+      return tmpresult unless tmpresult == 0
+    end
+    return 0
+  end
 end
 
 class BlobTestTable 
@@ -641,6 +651,10 @@ class PreparedStmtBackendTests < Test::Unit::TestCase
     assert_equal(tc1, tc1)         # equality is reflexive
     assert_equal(tc1p, tc1)        # even after find operations
     assert_equal(tc1, tc1p)        # ... and it should be symmetric
+
+    assert_equal(tc1.hash, tc1p.hash)
+    assert_not_equal(tc2.hash, tc1p.hash)
+
     assert_not_equal(tc1, tc2)     # these are not identical
     assert_not_equal(tc1p, tc2)    # even after find operations
     assert_not_equal(tc2, tc1p)    # ... and it should be symmetric
@@ -653,10 +667,29 @@ class PreparedStmtBackendTests < Test::Unit::TestCase
 
   def freshness_query_fixture
     @flist = []
+    @fresh_fields = [:fee,:fie,:foe,:fum,:foo,:bar,:created,:updated,:row_id]
+    @ffcounts = {:fie=>2, :foe=>3, :fum=>4, :foo=>5, :bar=>6}  
     
-    0.upto(99) do |x|
-      @flist << FreshTestTable.create(:fee=>x, :fie=>(x%7), :foe=>(x%11), :fum=>(x%13))
+    x = 0
+    
+    2.times do
+      @ffcounts[:fie].times do |fie|
+        @ffcounts[:foe].times do |foe|
+          @ffcounts[:fum].times do |fum|
+            @ffcounts[:foo].times do |foo|
+              @ffcounts[:bar].times do |bar|
+                row = FreshTestTable.create(:fee=>@flist.size, :fie=>fie, :foe=>foe, :fum=>fum, :foo=>foo, :bar=>bar)
+                assert(row != nil)
+                @flist << row
+              end
+            end
+          end
+        end
+      end
     end
+    
+    @fcount = @flist.size
+    @ffcounts[:fee] = @fcount
   end
 
   def test_freshness_query_basic
@@ -665,8 +698,8 @@ class PreparedStmtBackendTests < Test::Unit::TestCase
     basic = FreshTestTable.find_freshest(:group_by=>[:fee])
     
     assert_equal(@flist.size, basic.size)
-    0.upto(99) do |x|
-      [:fee,:fie,:foe,:fum,:created,:updated,:row_id].each do |msg|
+    0.upto(@fcount - 1) do |x|
+      @fresh_fields.each do |msg|
         assert_equal(@flist[x].send(msg), basic[x].send(msg))
       end
     end
@@ -680,7 +713,7 @@ class PreparedStmtBackendTests < Test::Unit::TestCase
     
     assert_equal(31, basic.size)
     0.upto(30) do |x|
-      [:fee,:fie,:foe,:fum,:created,:updated,:row_id].each do |msg|
+      @fresh_fields.each do |msg|
         assert_equal(@flist[x].send(msg), basic[x].send(msg))
       end
     end
@@ -690,15 +723,18 @@ class PreparedStmtBackendTests < Test::Unit::TestCase
     freshness_query_fixture
     # basic test
 
-    basic = FreshTestTable.find_freshest(:group_by=>[:fee], :select_by=>{:fie=>0}, :debug=>true)
+    ffc = @ffcounts[:fie]
 
-    expected_ct = 99/7 + 1;
+    basic = FreshTestTable.find_freshest(:group_by=>[:fee], :select_by=>{:fie=>0}, :debug=>true).sort_by {|x| x.fee}
+
+    expected_ct = @fcount/ffc
+    expected_rows = @flist.select{|tup| tup.fie == 0}.sort_by{|tup| tup.fee}
 
     assert_equal(expected_ct, basic.size)
 
     0.upto(expected_ct - 1) do |x|
-      [:fee,:fie,:foe,:fum,:created,:updated,:row_id].each do |msg|
-        assert_equal(@flist[x*7].send(msg), basic[x].send(msg))
+      @fresh_fields.each do |msg|
+        assert_equal(expected_rows[x].send(msg), basic[x].send(msg))
       end
     end
   end
@@ -706,23 +742,53 @@ class PreparedStmtBackendTests < Test::Unit::TestCase
   def test_freshness_query_group_single
     freshness_query_fixture
     # more basic tests
-    pairs = {:fie=>7,:foe=>11,:fum=>13}
+    pairs = @ffcounts.dup
+    pairs.delete(:fee)
+    
     pairs.each do |col,ct|
       basic = FreshTestTable.find_freshest(:group_by=>[col])
       assert_equal(ct,basic.size)
 
       expected_objs = {}
 
-      99.downto(99-ct+1) do |x|
-        expected_objs[x%ct] = @flist[x]
+      needed_vals = Set[*(0..ct).to_a]
+
+      @flist.reverse_each do |row|
+        break if needed_vals.empty?
+        
+        colval = row.send(col)
+        if needed_vals.include? colval
+          expected_objs[colval] = row
+          needed_vals.delete(colval)
+        end
       end
 
       basic.each do |row|
         res = expected_objs[row.send(col)]
-        [:fee,:fie,:foe,:fum,:created,:updated,:row_id].each do |msg|
+        puts expected_objs.keys.inspect if res.nil?
+        @fresh_fields.each do |msg|
           assert_equal(res.send(msg), row.send(msg))
         end
       end
+    end
+  end
+  
+  def test_freshness_query_group_powerset
+    freshness_query_fixture
+    # more basic tests
+    
+    pairs = @ffcounts.dup
+    pairs.delete(:fee)
+    pairs_powerset = pairs.to_a.inject([[]]){|c,y|r=[];c.each{|i|r<<i;r<<i+[y]};r}.map {|h| h.transpose}
+    pairs_powerset.shift
+    
+    pairs_powerset.each do |cols,cts|
+      expected_ct = cts.inject(1){|x,acc| acc * x}
+      basic = FreshTestTable.find_freshest(:group_by=>cols)
+      
+      assert_equal(expected_ct,basic.size)
+
+      # XXX:  test identities, too
     end
   end
   

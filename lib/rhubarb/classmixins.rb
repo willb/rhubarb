@@ -55,7 +55,7 @@ module Rhubarb
       arg_hash = arg_hash.dup
       valid_cols = self.colnames.intersection arg_hash.keys
       select_criteria = valid_cols.map {|col| "#{col.to_s} = #{col.inspect}"}.join(" AND ")
-      arg_hash.each {|k,v| arg_hash[k] = v.row_id if v.respond_to? :row_id}
+      arg_hash.each {|key,val| arg_hash[key] = val.row_id if val.respond_to? :row_id}
       db.do_query("select * from #{table_name} where #{select_criteria} order by row_id", arg_hash) {|tup| results << self.new(tup) }
       results
     end
@@ -75,7 +75,7 @@ module Rhubarb
       arg_hash = arg_hash.dup
       valid_cols = self.colnames.intersection arg_hash.keys
       select_criteria = valid_cols.map {|col| "#{col.to_s} = #{col.inspect}"}.join(" AND ")
-      arg_hash.each {|k,v| arg_hash[k] = v.row_id if v.respond_to? :row_id}
+      arg_hash.each {|key,val| arg_hash[key] = val.row_id if val.respond_to? :row_id}
       db.do_query("DELETE FROM #{table_name} WHERE #{select_criteria}", arg_hash)
     end
 
@@ -124,7 +124,7 @@ module Rhubarb
       set_method_name = "#{cname}=".to_sym
 
       # does this column reference another table?
-      rf = quals.find {|q| q.class == Reference}
+      rf = quals.find {|qual| qual.class == Reference}
       if rf
         self.refs[cname] = rf
       end
@@ -154,7 +154,8 @@ module Rhubarb
       define_method get_method_name do
         freshen
         return nil unless @tuple
-        out_xform ? out_xform.call(@tuple[cname.to_s]) : @tuple[cname.to_s]
+        result = @tuple[cname.to_s]
+        out_xform ? out_xform.call(result) : result
       end
 
       if not rf
