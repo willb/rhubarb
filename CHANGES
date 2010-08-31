@@ -1,3 +1,8 @@
+version 0.2.7
+
+*  Fix for reference-valued hash-style positional parameters in 
+   custom queries.  Fix for Red Hat BZ 618493.
+
 version 0.2.6
 
 *  Rhubarb now supports starting arbitrary Ruby objects to fields 
