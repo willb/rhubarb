@@ -92,7 +92,16 @@ module Rhubarb
       klass.class_eval do
         define_method name.to_s do |*args|
           # handle reference parameters
-          args = args.map {|arg| Util::rhubarb_fk_identity(arg)}
+          if args.size == 1 && args[0].is_a?(Hash)
+            args[0].each do |k,v|
+              args[0][k] = Util::rhubarb_fk_identity(v)
+            end
+          else
+            args = args.map do |arg| 
+              raise RuntimeError.new("Hash-valued positional parameters may only appear as named positional parameters.") if arg.is_a?(Hash)
+              Util::rhubarb_fk_identity(arg)
+            end
+          end
           
           results = []
           db.do_query(processed_query, args) {|tup| results << self.new(tup)}

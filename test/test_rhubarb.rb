@@ -78,9 +78,11 @@ class ToRef
   declare_column :foo, :string
 end
 
-class FromRef 
+class FromRef
   include Rhubarb::Persisting 
   declare_column :t, :integer, references(ToRef, :on_delete=>:cascade)
+  declare_query :to_is, "t = ?"
+  declare_query :to_is_hash, "t = :t"
 end
 
 class FreshTestTable 
@@ -863,6 +865,25 @@ class PreparedStmtBackendTests < Test::Unit::TestCase
     things.zip(otts) do |thing, ott|
       assert_equal thing.class.name.to_s, ott.otype
       assert_equal thing, ott.obj      
+    end
+  end
+  
+  [true, false].each do |create_uses_rowid|
+    [true, false].each do |lookup_uses_rowid|
+      [true, false].each do |to_is_hash|
+  
+        define_method("test_reference_params_in_#{to_is_hash ? "hashed_" : ""}custom_queries_#{create_uses_rowid ? "createUsesRowID" : "createUsesObject"}_#{lookup_uses_rowid ? "lookupUsesRowID" : "lookupUsesObject"}".to_sym) do
+          to_refs = %w{foo bar blah}.map {|s| ToRef.create(:foo=>s)}
+          to_refs.each {}
+          to_refs.each {|tr| FromRef.create(:t=>create_uses_rowid ? tr.row_id : tr)}
+  
+          to_refs.each do |tr|
+            frs = to_is_hash ? FromRef.to_is_hash(:t=>lookup_uses_rowid ? tr.row_id : tr) : FromRef.to_is(lookup_uses_rowid ? tr.row_id : tr)
+            assert_equal frs.size, 1
+            assert_equal frs[0].t, tr
+          end
+        end
+      end
     end
   end
 end
