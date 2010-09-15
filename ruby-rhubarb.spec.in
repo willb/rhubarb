@@ -1,5 +1,5 @@
 %{!?ruby_sitelib: %global ruby_sitelib %(ruby -rrbconfig -e 'puts Config::CONFIG["sitelibdir"] ')}
-%define rel 1.0
+%define rel 1
 
 Summary: Simple versioned object-graph persistence layer
 Name: ruby-rhubarb
@@ -48,6 +48,10 @@ rm -rf %{buildroot}
 %{ruby_sitelib}/rhubarb/persistence.rb
 
 %changelog
+* Wed Sep 15 2010 willb <willb@redhat> - 0.2.7-1
+- Updated to version 0.2.7
+- fixed problems with hash-valued params in custom queries
+
 * Wed Apr 28 2010 willb <willb@redhat> - 0.2.6-1.0
 - Updated to version 0.2.6
 
