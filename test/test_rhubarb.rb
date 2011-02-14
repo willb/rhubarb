@@ -123,6 +123,16 @@ class NoColumnsTestTable
   include Rhubarb::Persisting
 end
 
+class Create
+  include Rhubarb::Persisting
+  declare_column :name, :string
+end
+
+class Group
+  include Rhubarb::Persisting
+  declare_column :other, :int, references(Create, :on_delete=>:cascade)
+end
+
 class PreparedStmtBackendTests < Test::Unit::TestCase  
   def dbfile
     ENV['RHUBARB_TEST_DB'] || ":memory:"
@@ -161,6 +171,28 @@ class PreparedStmtBackendTests < Test::Unit::TestCase
 
   def teardown
     Rhubarb::Persistence::close()
+  end
+
+  def test_reserved_word_table
+    assert_nothing_raised do
+      Create.create_table
+      Create.create(:name=>"bar")
+      c = Create.find_first_by_name("bar")
+      c.name = "blah"
+      c.name = "bar"
+      assert(c.name == "bar")
+      c.delete
+    end
+  end
+
+  def test_reserved_word_fk_table
+    assert_nothing_raised do
+      Create.create_table
+      Group.create_table
+      Create.create(:name=>"bar")
+      Group.create(:other=>Create.create(:name=>"blah"))
+      assert(Group.find_all[0].other.name=="blah")
+    end
   end
 
   def test_no_columns_table
