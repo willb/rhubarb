@@ -51,9 +51,9 @@ module Rhubarb
       query = "
   SELECT __freshest.* FROM (
     SELECT #{projection.to_a.join(', ')} FROM (
-      SELECT * from #{table_name} #{where_clause}
+      SELECT * from #{quoted_table_name} #{where_clause}
     ) #{group_by_clause}
-  ) as __fresh INNER JOIN #{table_name} as __freshest ON #{join_clause} ORDER BY row_id"
+  ) as __fresh INNER JOIN #{quoted_table_name} as __freshest ON #{join_clause} ORDER BY row_id"
       self.db.execute(query, query_params).map {|tup| self.new(tup) }
     end
   end

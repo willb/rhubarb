@@ -19,8 +19,14 @@ module Rhubarb
     PCM_OUTPUT_TRANSFORMERS = {:object=>Util.deswizzle_object_proc, :zblob=>Util.dezblobify_proc, }
     # Returns the name of the database table modeled by this class.
     # Defaults to the name of the class (sans module names)
-    def table_name
+    def table_name(quoted=false)
       @table_name ||= self.name.split("::").pop.downcase  
+      @quoted_table_name ||= "'#{@table_name}'"
+      quoted ? @quoted_table_name : @table_name
+    end
+
+    def quoted_table_name
+      table_name(true)
     end
 
     # Enables setting the table name to a custom name
@@ -56,19 +62,19 @@ module Rhubarb
       valid_cols = self.colnames.intersection arg_hash.keys
       select_criteria = valid_cols.map {|col| "#{col.to_s} = #{col.inspect}"}.join(" AND ")
       arg_hash.each {|key,val| arg_hash[key] = val.row_id if val.respond_to? :row_id}
-      db.do_query("select * from #{table_name} where #{select_criteria} order by row_id", arg_hash) {|tup| results << self.new(tup) }
+      db.do_query("select * from #{quoted_table_name} where #{select_criteria} order by row_id", arg_hash) {|tup| results << self.new(tup) }
       results
     end
 
     # Does what it says on the tin.  Since this will allocate an object for each row, it isn't recomended for huge tables.
     def find_all
       results = []
-      db.do_query("SELECT * from #{table_name}") {|tup| results << self.new(tup)}
+      db.do_query("SELECT * from #{quoted_table_name}") {|tup| results << self.new(tup)}
       results
     end
 
     def delete_all
-      db.do_query("DELETE from #{table_name}")
+      db.do_query("DELETE from #{quoted_table_name}")
     end
 
     def delete_where(arg_hash)
@@ -76,7 +82,7 @@ module Rhubarb
       valid_cols = self.colnames.intersection arg_hash.keys
       select_criteria = valid_cols.map {|col| "#{col.to_s} = #{col.inspect}"}.join(" AND ")
       arg_hash.each {|key,val| arg_hash[key] = val.row_id if val.respond_to? :row_id}
-      db.do_query("DELETE FROM #{table_name} WHERE #{select_criteria}", arg_hash)
+      db.do_query("DELETE FROM #{quoted_table_name} WHERE #{select_criteria}", arg_hash)
     end
 
     # Declares a query method named +name+ and adds it to this class.  The query method returns a list of objects corresponding to the rows returned by executing "+SELECT * FROM+ _table_ +WHERE+ _query_" on the database.
@@ -87,7 +93,7 @@ module Rhubarb
     # Declares a custom query method named +name+, and adds it to this class.  The custom query method returns a list of objects corresponding to the rows returned by executing +query+ on the database.  +query+ should select all fields (with +SELECT *+).  If +query+ includes the string +\_\_TABLE\_\_+, it will be expanded to the table name.  Typically, you will want to use +declare\_query+ instead; this method is most useful for self-joins.
     def declare_custom_query(name, query)
       klass = (class << self; self end)
-      processed_query = query.gsub("__TABLE__", "#{self.table_name}")
+      processed_query = query.gsub("__TABLE__", "#{self.quoted_table_name}")
       
       klass.class_eval do
         define_method name.to_s do |*args|
@@ -113,7 +119,7 @@ module Rhubarb
     def declare_index_on(*fields)
       @creation_callbacks << Proc.new do
         idx_name = "idx_#{self.table_name}__#{fields.join('__')}__#{@creation_callbacks.size}"
-        creation_cmd = "create index #{idx_name} on #{self.table_name} (#{fields.join(', ')})"
+        creation_cmd = "create index #{idx_name} on #{self.quoted_table_name} (#{fields.join(', ')})"
         self.db.execute(creation_cmd)
       end if fields.size > 0
     end
@@ -127,7 +133,7 @@ module Rhubarb
 
       find_method_name = "find_by_#{cname}".to_sym
       find_first_method_name = "find_first_by_#{cname}".to_sym
-      find_query = "select * from #{table_name} where #{cname} = ? order by row_id"
+      find_query = "select * from #{quoted_table_name} where #{cname} = ? order by row_id"
 
       get_method_name = "#{cname}".to_sym
       set_method_name = "#{cname}=".to_sym
@@ -202,15 +208,16 @@ module Rhubarb
         # not expose the capacity to change row IDs.
         
         rtable = rf.referent.table_name
+        qrtable = rf.referent.quoted_table_name
 
         self.creation_callbacks << Proc.new do   
           @ccount ||= 0
 
           insert_trigger_name, delete_trigger_name = %w{insert delete}.map {|op| "ri_#{op}_#{self.table_name}_#{@ccount}_#{rtable}" } 
 
-          self.db.execute_batch("CREATE TRIGGER #{insert_trigger_name} BEFORE INSERT ON \"#{self.table_name}\" WHEN new.\"#{cname}\" IS NOT NULL AND NOT EXISTS (SELECT 1 FROM \"#{rtable}\" WHERE new.\"#{cname}\" == \"#{rf.column}\") BEGIN SELECT RAISE(ABORT, 'constraint #{insert_trigger_name} (#{rtable} missing foreign key row) failed'); END;")
+          self.db.execute_batch("CREATE TRIGGER #{insert_trigger_name} BEFORE INSERT ON #{quoted_table_name} WHEN new.\"#{cname}\" IS NOT NULL AND NOT EXISTS (SELECT 1 FROM #{qrtable} WHERE new.\"#{cname}\" == \"#{rf.column}\") BEGIN SELECT RAISE(ABORT, 'constraint #{insert_trigger_name} (#{rtable} missing foreign key row) failed'); END;")
 
-          self.db.execute_batch("CREATE TRIGGER #{delete_trigger_name} BEFORE DELETE ON \"#{rtable}\" WHEN EXISTS (SELECT 1 FROM \"#{self.table_name}\" WHERE old.\"#{rf.column}\" == \"#{cname}\") BEGIN DELETE FROM \"#{self.table_name}\" WHERE \"#{cname}\" = old.\"#{rf.column}\"; END;") if rf.options[:on_delete] == :cascade
+          self.db.execute_batch("CREATE TRIGGER #{delete_trigger_name} BEFORE DELETE ON #{qrtable} WHEN EXISTS (SELECT 1 FROM #{quoted_table_name} WHERE old.\"#{rf.column}\" == \"#{cname}\") BEGIN DELETE FROM #{quoted_table_name} WHERE \"#{cname}\" = old.\"#{rf.column}\"; END;") if rf.options[:on_delete] == :cascade
 
           @ccount = @ccount + 1
         end
@@ -240,7 +247,7 @@ module Rhubarb
         new_row[column] = xform ? xform.call(value) : Util::rhubarb_fk_identity(value)
       end
 
-      create_text = "insert into #{table_name} (#{colspec}) values (#{valspec})"
+      create_text = "insert into #{quoted_table_name} (#{colspec}) values (#{valspec})"
       db.do_query(create_text, new_row)
       
       res = find(db.last_insert_row_id)
@@ -252,7 +259,7 @@ module Rhubarb
     # corresponding to this class. 
     def table_decl
       ddlspecs = [columns.join(", "), constraints.join(", ")].reject {|str| str.size==0}.join(", ")
-      "create table #{table_name} (#{ddlspecs});"
+      "create table #{quoted_table_name} (#{ddlspecs});"
     end
 
     # Creates a table in the database corresponding to this class.
@@ -299,11 +306,11 @@ module Rhubarb
 
     # Returns the number of rows in the table backing this class
     def count
-      self.db.get_first_value("select count(row_id) from #{table_name}").to_i
+      self.db.get_first_value("select count(row_id) from #{quoted_table_name}").to_i
     end
 
     def find_tuple(tid)
-      ft_text = "select * from #{table_name} where row_id = ?"
+      ft_text = "select * from #{quoted_table_name} where row_id = ?"
       result = nil
       db.do_query(ft_text, tid) {|tup| result = tup; break}
       result
