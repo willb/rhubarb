@@ -23,6 +23,10 @@ module Rhubarb
         attr_reader :created
         attr_reader :updated
       end
+      
+      other.instance_eval do
+        private_class_method :ensure_accessors
+      end
     end
 
     def db
