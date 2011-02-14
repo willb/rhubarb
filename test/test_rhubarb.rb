@@ -119,6 +119,10 @@ class ObjectTestTable
   declare_column :obj, :object
 end
 
+class NoColumnsTestTable
+  include Rhubarb::Persisting
+end
+
 class PreparedStmtBackendTests < Test::Unit::TestCase  
   def dbfile
     ENV['RHUBARB_TEST_DB'] || ":memory:"
@@ -157,6 +161,12 @@ class PreparedStmtBackendTests < Test::Unit::TestCase
 
   def teardown
     Rhubarb::Persistence::close()
+  end
+
+  def test_no_columns_table
+    assert_nothing_raised do
+      NoColumnsTestTable.create_table      
+    end
   end
 
   def test_persistence_setup
