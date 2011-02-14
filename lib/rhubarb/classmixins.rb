@@ -257,6 +257,7 @@ module Rhubarb
 
     # Creates a table in the database corresponding to this class.
     def create_table(dbkey=:default)
+      ensure_accessors
       self.db ||= Persistence::dbs[dbkey] unless @explicitdb
       self.db.execute(table_decl)
       @creation_callbacks.each {|func| func.call}
