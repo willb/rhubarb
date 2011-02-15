@@ -48,6 +48,9 @@ rm -rf %{buildroot}
 %{ruby_sitelib}/rhubarb/persistence.rb
 
 %changelog
+* Tue Feb 15 2011 willb <willb@redhat> - 0.3.0-1
+- fixed bzs 674432, 674433, 677807
+
 * Wed Sep 15 2010 willb <willb@redhat> - 0.2.7-1
 - Updated to version 0.2.7
 - fixed problems with hash-valued params in custom queries
