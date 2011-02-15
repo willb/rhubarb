@@ -875,6 +875,42 @@ class PreparedStmtBackendTests < Test::Unit::TestCase
     assert_equal(text, Zlib::Inflate.inflate(cbtrow.info))
   end
 
+  def test_mutable_object_data
+    things = []
+    
+    words = %w{It is a truth universally acknowledged that a single man in possession of a good fortune must be in want of a wife}
+    
+    100.times do
+      things << words.sort_by {rand}
+    end
+    
+    things.each_with_index do |thing, idx|
+      ObjectTestTable.create(:otype=>thing.class.name.to_s, :obj=>thing)
+    end
+    
+    otts = ObjectTestTable.find_all
+    
+    assert_equal otts.size, things.size
+    
+    things.zip(otts) do |thing, ott|
+      assert_equal thing.class.name.to_s, ott.otype
+      assert_equal thing, ott.obj      
+    end
+    
+    otts.each_with_index do |ott, i|
+      obj = ott.obj.reverse
+      ott.obj = obj.dup
+      assert_equal obj, ott.obj
+      assert_equal obj, ObjectTestTable.find(ott.row_id).obj
+      things[i].reverse!
+    end
+    
+    things.zip(otts) do |thing, ott|
+      assert_equal thing.class.name.to_s, ott.otype
+      assert_equal thing, ott.obj      
+    end
+  end
+
 
   def test_object_data
     things = []
