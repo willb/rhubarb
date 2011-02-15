@@ -123,7 +123,7 @@ module Rhubarb
     def update(attr_name, value)
       mark_dirty
 
-      db.do_query("update #{self.class.quoted_table_name} set #{attr_name} = ?, updated = ? where row_id = ?", value, Util::timestamp, @row_id)
+      db.do_query("update #{self.class.quoted_table_name} set '#{attr_name}' = ?, updated = ? where row_id = ?", value, Util::timestamp, @row_id)
     end
 
     # Resolve any fields that reference other tables, replacing row ids with referred objects

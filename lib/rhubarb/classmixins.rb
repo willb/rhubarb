@@ -133,7 +133,7 @@ module Rhubarb
 
       find_method_name = "find_by_#{cname}".to_sym
       find_first_method_name = "find_first_by_#{cname}".to_sym
-      find_query = "select * from #{quoted_table_name} where #{cname} = ? order by row_id"
+      find_query = "select * from #{quoted_table_name} where \"#{cname}\" = ? order by row_id"
 
       get_method_name = "#{cname}".to_sym
       set_method_name = "#{cname}=".to_sym
@@ -179,8 +179,9 @@ module Rhubarb
         xform = PCM_INPUT_TRANSFORMERS[kind]
         
         define_method set_method_name do |arg|
-          @tuple["#{cname}"] = xform ? xform.call(arg) : arg
-          update cname, arg
+          new_val = xform ? xform.call(arg) : arg
+          @tuple["#{cname}"] = new_val
+          update cname, new_val
         end      
       else
         # this column references another table; create a set 
@@ -237,8 +238,8 @@ module Rhubarb
       new_row = args[0]
       new_row[:created] = new_row[:updated] = Util::timestamp
 
-      cols = colnames.intersection new_row.keys
-      colspec, valspec = [:to_s, :inspect].map {|msg| (cols.map {|col| col.send(msg)}).join(", ")}
+      colspec, valspec = cvspecs[new_row.keys]
+
       res = nil
 
       # resolve any references in the args
@@ -314,6 +315,13 @@ module Rhubarb
       result = nil
       db.do_query(ft_text, tid) {|tup| result = tup; break}
       result
+    end
+    
+    def cvspecs
+      @cvspecs ||= Hash.new do |h,new_row_keys|
+        cols = colnames.intersection new_row_keys
+        h[new_row_keys] = [Proc.new {|f| f.to_s.inspect}, Proc.new {|f| f.inspect}].map {|p| (cols.map {|col| p.call(col)}).join(", ")}
+      end
     end
     
     include FindFreshest

@@ -23,9 +23,9 @@ module Rhubarb
     def to_s
       qualifiers = @quals.join(" ")
       if qualifiers == ""
-        "#@name #@kind"
+        "'#@name' #@kind"
       else
-        "#@name #@kind #{qualifiers}"
+        "'#@name' #@kind #{qualifiers}"
       end
     end
   end

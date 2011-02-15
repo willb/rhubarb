@@ -133,6 +133,11 @@ class Group
   declare_column :other, :int, references(Create, :on_delete=>:cascade)
 end
 
+class Order
+  include Rhubarb::Persisting
+  declare_column :group, :int
+end
+
 class PreparedStmtBackendTests < Test::Unit::TestCase  
   def dbfile
     ENV['RHUBARB_TEST_DB'] || ":memory:"
@@ -182,6 +187,16 @@ class PreparedStmtBackendTests < Test::Unit::TestCase
       c.name = "bar"
       assert(c.name == "bar")
       c.delete
+    end
+  end
+  
+  def test_reserved_word_column
+    assert_nothing_raised do
+      Order.create_table
+      Order.create(:group=>42)
+      o = Order.find_first_by_group(42)
+      o.group = 37
+      assert(o.group == 37)
     end
   end
 
