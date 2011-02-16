@@ -37,8 +37,11 @@ module Rhubarb
     
     def self.dezblobify_proc
       @dezblobify_proc ||= Proc.new do |obj| 
-        return nil if obj.nil? || obj == ""
-        Zlib::Inflate.inflate(obj)
+        if obj.nil? || obj == ""
+          nil
+        else
+          Zlib::Inflate.inflate(obj)
+        end
       end
     end
     
@@ -51,10 +54,12 @@ module Rhubarb
 
     def self.deswizzle_object_proc
       @deswizzle_object_proc ||= Proc.new do |zy_obj|
-        return nil if zy_obj.nil? || zy_obj == ""
-        
-        obj = YAML.load(Zlib::Inflate.inflate(zy_obj))
-        obj.freeze
+        if zy_obj.nil? || zy_obj == ""
+          nil
+        else
+          obj = YAML.load(Zlib::Inflate.inflate(zy_obj))
+          obj.freeze
+        end
       end
     end
   end
