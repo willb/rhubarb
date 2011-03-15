@@ -1,5 +1,5 @@
 %{!?ruby_sitelib: %global ruby_sitelib %(ruby -rrbconfig -e 'puts Config::CONFIG["sitelibdir"] ')}
-%define rel 1
+%define rel 2
 
 Summary: Simple versioned object-graph persistence layer
 Name: ruby-rhubarb
@@ -48,6 +48,9 @@ rm -rf %{buildroot}
 %{ruby_sitelib}/rhubarb/persistence.rb
 
 %changelog
+* Mon Mar 14 2011 willb <willb@redhat> - 0.3.0-2
+- fix for object output transformers
+
 * Tue Feb 15 2011 willb <willb@redhat> - 0.3.0-1
 - fixed bzs 674432, 674433, 677807
 
