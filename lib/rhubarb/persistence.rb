@@ -66,7 +66,11 @@ module Rhubarb
     @dbs = DbCollection.new
     
     def self.prepared_ok
-      result = SQLite3.constants.include?("VERSION") && SQLite3::VERSION =~ /1\.2\.[0-9]/
+      !!sqlite_13
+    end
+
+    def self.sqlite_13
+      result = SQLite3.constants.include?("VERSION") && SQLite3::VERSION =~ /1\.3\.[0-9]+/
       !!result
     end
 

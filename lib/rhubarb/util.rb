@@ -24,7 +24,7 @@ module Rhubarb
 
     # Identity for objects that may be used as foreign keys
     def self.rhubarb_fk_identity(object)
-      object.class.ancestors.include?(Persisting) || object.class.ancestors.include?(Rhubarb::Persisting) ? object.row_id : object
+      (object.class.ancestors.include?(Persisting) || object.class.ancestors.include?(Rhubarb::Persisting)) ? object.row_id : object
     end
 
     def self.truthify_proc

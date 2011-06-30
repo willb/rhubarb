@@ -149,12 +149,14 @@ module Rhubarb
       klass.class_eval do 
         define_method find_method_name do |arg|
           results = []
+          arg = Util.rhubarb_fk_identity(arg)
           db.do_query(find_query, arg) {|row| results << self.new(row)}
           results
         end
 
         define_method find_first_method_name do |arg|
           result = nil
+          arg = Util.rhubarb_fk_identity(arg)
           db.do_query(find_query, arg) {|row| result = self.new(row) ; break }
           result
         end

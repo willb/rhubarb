@@ -15,8 +15,8 @@ require 'helper'
 require 'fileutils'
 
 Customer = Struct.new(:name, :address)
-SQLITE_133 = !!(SQLite3.constants.include?("VERSION") && SQLite3::VERSION =~ /1\.3\.[0-9]/) 
-CONSTRAINT_EXCEPTION = SQLITE_133 ? SQLite3::ConstraintException : SQLite3::SQLException
+SQLITE_13 = ::Rhubarb::Persistence::sqlite_13
+CONSTRAINT_EXCEPTION = SQLITE_13 ? SQLite3::ConstraintException : SQLite3::SQLException
 
 class TestClass 
   include Rhubarb::Persisting  
@@ -982,7 +982,7 @@ class NoPreparedStmtBackendTests < Test::Unit::TestCase
   end
 end
 
-unless SQLITE_133
+unless SQLITE_13
   class PreparedStmtBackendTests < NoPreparedStmtBackendTests  
     def use_prepared
       true
