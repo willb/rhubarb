@@ -245,6 +245,10 @@ module Rhubarb
       # resolve any references in the args
       new_row.each do |column,value|
         xform = PCM_INPUT_TRANSFORMERS[colkinds[column]]
+        if value.class.to_s =~ /Create/
+          puts "\n\nHEY:  xform is #{xform.inspect}; rhubarb_fk_identity(value) is #{Util::rhubarb_fk_identity(value).inspect}"
+          puts "\n\nHEY, ENCORE:  value.class.ancestors is #{value.class.ancestors.inspect}"
+        end
         new_row[column] = xform ? xform.call(value) : Util::rhubarb_fk_identity(value)
       end
 
