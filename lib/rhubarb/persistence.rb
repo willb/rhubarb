@@ -42,7 +42,7 @@ module Rhubarb
       private
       def setup_db(db)
         db.results_as_hash = true
-#        db.type_translation = true
+        db.type_translation = true
         db.busy_timeout(150)
         class << db
           def stmts
@@ -51,7 +51,7 @@ module Rhubarb
           end
         end
         
-        if @use_prepared_stmts
+        if @use_prepared_stmts && Rhubarb::Persistence::prepared_ok
           class << db
             include UsePreparedStatements
           end
@@ -65,6 +65,11 @@ module Rhubarb
     
     @dbs = DbCollection.new
     
+    def self.prepared_ok
+      result = SQLite3.constants.include?("VERSION") && SQLite3::VERSION =~ /1\.2\.[0-9]/
+      !!result
+    end
+
     def self.open(filename, which=:default, usePrepared=true)
       dbs.use_prepared_stmts = usePrepared
       dbs[which] = SQLite3::Database.new(filename)

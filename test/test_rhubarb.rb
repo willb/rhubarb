@@ -15,7 +15,8 @@ require 'helper'
 require 'fileutils'
 
 Customer = Struct.new(:name, :address)
-
+SQLITE_133 = !!(SQLite3.constants.include?("VERSION") && SQLite3::VERSION =~ /1\.3\.[0-9]/) 
+CONSTRAINT_EXCEPTION = SQLITE_133 ? SQLite3::ConstraintException : SQLite3::SQLException
 
 class TestClass 
   include Rhubarb::Persisting  
@@ -138,13 +139,13 @@ class Order
   declare_column :group, :int
 end
 
-class PreparedStmtBackendTests < Test::Unit::TestCase  
+class NoPreparedStmtBackendTests < Test::Unit::TestCase  
   def dbfile
     ENV['RHUBARB_TEST_DB'] || ":memory:"
   end
   
   def use_prepared
-    true
+    false
   end
 
   def setup
@@ -514,9 +515,9 @@ class PreparedStmtBackendTests < Test::Unit::TestCase
     
     result = TestClass.find_by_foo(2)
     tc = result[0]
-    assert(result.size == 1, "TestClass.find_by_foo(2) should return exactly one result")
-    assert(tc.foo == 2, "tc.foo (found by foo) should have the value 2")
-    assert(tc.bar == "argh", "tc.bar (found by foo) should have the value \"argh\"")
+    assert_equal(1, result.size, "TestClass.find_by_foo(2) should return exactly one result")
+    assert_equal(2, tc.foo, "tc.foo (found by foo) should have the value 2")
+    assert_equal("argh", tc.bar, "tc.bar (found by foo) should have the value \"argh\"")
   end
 
   def test_create_and_find_first_by_foo
@@ -653,7 +654,7 @@ class PreparedStmtBackendTests < Test::Unit::TestCase
   end
 
   def test_referential_integrity
-    assert_raise SQLite3::SQLException do 
+    assert_raise CONSTRAINT_EXCEPTION do
       FromRef.create(:t => 42)
     end
     
@@ -981,8 +982,10 @@ class PreparedStmtBackendTests < Test::Unit::TestCase
   end
 end
 
-class NoPreparedStmtBackendTests < PreparedStmtBackendTests  
-  def use_prepared
-    false
+unless SQLITE_133
+  class PreparedStmtBackendTests < NoPreparedStmtBackendTests  
+    def use_prepared
+      true
+    end
   end
 end

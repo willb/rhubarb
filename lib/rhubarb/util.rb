@@ -26,6 +26,10 @@ module Rhubarb
     def self.rhubarb_fk_identity(object)
       object.class.ancestors.include?(Persisting) || object.class.ancestors.include?(Rhubarb::Persisting) ? object.row_id : object
     end
+
+    def self.truthify_proc
+      @truthify_proc ||= Proc.new {|obj| !!(obj) ? "true" : "false"}
+    end
     
     def self.blobify_proc
       @blobify_proc ||= Proc.new {|obj| obj.is_a?(SQLite3::Blob) ? obj : SQLite3::Blob.new(obj)}
