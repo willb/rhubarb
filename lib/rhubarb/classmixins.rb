@@ -56,14 +56,36 @@ module Rhubarb
     
     alias find_by_id find
 
-    def find_by(arg_hash)
+    def find_by_sqlite13(arg_hash)
       results = []
       arg_hash = arg_hash.dup
       valid_cols = self.colnames.intersection arg_hash.keys
       select_criteria = valid_cols.map {|col| "#{col.to_s} = #{col.inspect}"}.join(" AND ")
-      arg_hash.each {|key,val| arg_hash[key] = val.row_id if val.respond_to? :row_id}
+      arg_hash.each do |key,val| 
+        arg_hash[key] = val.row_id if val.respond_to? :row_id
+        xform = PCM_INPUT_TRANSFORMERS[colkinds[key]]
+        arg_hash[key] = xform.call(val) if xform
+      end
       db.do_query("select * from #{quoted_table_name} where #{select_criteria} order by row_id", arg_hash) {|tup| results << self.new(tup) }
       results
+    end
+
+    def find_by_sqlite12(arg_hash)
+      results = []
+      arg_hash = arg_hash.dup
+      valid_cols = self.colnames.intersection arg_hash.keys
+      select_criteria = valid_cols.map {|col| "#{col.to_s} = #{col.inspect}"}.join(" AND ")
+      arg_hash.each do |key,val| 
+        arg_hash[key] = val.row_id if val.respond_to? :row_id
+      end
+      db.do_query("select * from #{quoted_table_name} where #{select_criteria} order by row_id", arg_hash) {|tup| results << self.new(tup) }
+      results
+    end
+
+    if ::Rhubarb::Persistence::sqlite_13
+      alias find_by find_by_sqlite13
+    else
+      alias find_by find_by_sqlite12
     end
 
     # Does what it says on the tin.  Since this will allocate an object for each row, it isn't recomended for huge tables.

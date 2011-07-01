@@ -18,6 +18,14 @@ Customer = Struct.new(:name, :address)
 SQLITE_13 = ::Rhubarb::Persistence::sqlite_13
 CONSTRAINT_EXCEPTION = SQLITE_13 ? SQLite3::ConstraintException : SQLite3::SQLException
 
+BFB_MAX = 512
+
+class ParityTest
+  include Rhubarb::Persisting
+  declare_column :number, :integer
+  declare_column :parity, :boolean
+end
+
 class TestClass 
   include Rhubarb::Persisting  
   declare_column :foo, :integer
@@ -169,7 +177,7 @@ class NoPreparedStmtBackendTests < Test::Unit::TestCase
     klasses << ObjectTestTable
     klasses << RhubarbNamespace::NMTC
     klasses << RhubarbNamespace::NMTC2
-
+    klasses << ParityTest
     klasses.each { |klass| klass.create_table }
 
     @flist = []
@@ -177,6 +185,34 @@ class NoPreparedStmtBackendTests < Test::Unit::TestCase
 
   def teardown
     Rhubarb::Persistence::close()
+  end
+
+  def test_boolean_find_by
+    # believe me, I chuckled while writing this
+    bit_parity = Proc.new do |k|
+      k.to_s(2).split("0").join.size.even?
+    end
+    
+    expected_numbers = Set.new
+
+    BFB_MAX.times do |i|
+      ParityTest.create(:number=>i, :parity=>bit_parity.call(i))
+      expected_numbers << i
+    end
+    
+    even = ParityTest.find_by(:parity=>true)
+    odd = ParityTest.find_by(:parity=>false)
+
+    assert_equal(BFB_MAX, even.size+odd.size)
+    {even=>true, odd=>false}.each do |collection, par|
+      collection.each do |pt|
+        assert_equal(bit_parity.call(pt.number), pt.parity)
+        assert_equal(par, pt.parity)
+        expected_numbers.delete(pt.number)
+      end
+    end
+
+    assert_equal(0, expected_numbers.size)
   end
 
   def test_reserved_word_table
