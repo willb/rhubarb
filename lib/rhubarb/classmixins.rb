@@ -16,7 +16,7 @@ module Rhubarb
   # Methods mixed in to the class object of a persisting class
   module PersistingClassMixins 
     PCM_INPUT_TRANSFORMERS = {:blob=>Util.blobify_proc, :zblob=>Util.zblobify_proc, :object=>Util.swizzle_object_proc, :boolean=>Util.truthify_proc}
-    PCM_OUTPUT_TRANSFORMERS = {:object=>Util.deswizzle_object_proc, :zblob=>Util.dezblobify_proc, }
+    PCM_OUTPUT_TRANSFORMERS = {:object=>Util.deswizzle_object_proc, :zblob=>Util.dezblobify_proc, :string=>Proc.new {|v| v.to_s}}
     # Returns the name of the database table modeled by this class.
     # Defaults to the name of the class (sans module names)
     def table_name(quoted=false)
