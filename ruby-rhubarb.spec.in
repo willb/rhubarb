@@ -1,5 +1,5 @@
 %{!?ruby_sitelib: %global ruby_sitelib %(ruby -rrbconfig -e 'puts Config::CONFIG["sitelibdir"] ')}
-%define rel 3
+%define rel 1
 
 Summary: Simple versioned object-graph persistence layer
 Name: ruby-rhubarb
@@ -48,6 +48,9 @@ rm -rf %{buildroot}
 %{ruby_sitelib}/rhubarb/persistence.rb
 
 %changelog
+* Wed Jul 6 2011 willb <willb@redhat> - 0.4.0-1
+- now works with sqlite3-ruby 1.3.x (BZ 718016)
+
 * Mon Jun 6 2011 willb <willb@redhat> - 0.3.0-3
 - installation now preserves file modification times
 
