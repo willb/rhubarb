@@ -13,10 +13,19 @@
 require 'rhubarb/mixins/freshness'
 
 module Rhubarb
+  # Forward declaration
+  module Persistence; end
+
   # Methods mixed in to the class object of a persisting class
-  module PersistingClassMixins 
-    PCM_INPUT_TRANSFORMERS = {:blob=>Util.blobify_proc, :zblob=>Util.zblobify_proc, :object=>Util.swizzle_object_proc, :boolean=>Util.truthify_proc}
-    PCM_OUTPUT_TRANSFORMERS = {:object=>Util.deswizzle_object_proc, :zblob=>Util.dezblobify_proc, :string=>Proc.new {|v| v.to_s}}
+  module PersistingClassMixins
+    if ::Rhubarb::Persistence::sqlite_13
+      PCM_INPUT_TRANSFORMERS = {:blob=>Util.blobify_proc, :zblob=>Util.zblobify_proc, :object=>Util.swizzle_object_proc, :boolean=>Util.truthify_proc}
+      PCM_OUTPUT_TRANSFORMERS = {:object=>Util.deswizzle_object_proc, :zblob=>Util.dezblobify_proc, :string=>Proc.new {|v| v.to_s}}
+    else
+      PCM_INPUT_TRANSFORMERS = {:blob=>Util.blobify_proc, :zblob=>Util.zblobify_proc, :object=>Util.swizzle_object_proc}
+      PCM_OUTPUT_TRANSFORMERS = {:object=>Util.deswizzle_object_proc, :zblob=>Util.dezblobify_proc}
+    end
+      
     # Returns the name of the database table modeled by this class.
     # Defaults to the name of the class (sans module names)
     def table_name(quoted=false)
@@ -56,7 +65,7 @@ module Rhubarb
     
     alias find_by_id find
 
-    def find_by(arg_hash)
+    def find_by_sqlite13(arg_hash)
       results = []
       arg_hash = arg_hash.dup
       valid_cols = self.colnames.intersection arg_hash.keys
@@ -68,6 +77,24 @@ module Rhubarb
       end
       db.do_query("select * from #{quoted_table_name} where #{select_criteria} order by row_id", arg_hash) {|tup| results << self.new(tup) }
       results
+    end
+
+    def find_by_sqlite12(arg_hash)
+      results = []
+      arg_hash = arg_hash.dup
+      valid_cols = self.colnames.intersection arg_hash.keys
+      select_criteria = valid_cols.map {|col| "#{col.to_s} = #{col.inspect}"}.join(" AND ")
+      arg_hash.each do |key,val| 
+        arg_hash[key] = val.row_id if val.respond_to? :row_id
+      end
+      db.do_query("select * from #{quoted_table_name} where #{select_criteria} order by row_id", arg_hash) {|tup| results << self.new(tup) }
+      results
+    end
+
+    if ::Rhubarb::Persistence::sqlite_13
+      alias find_by find_by_sqlite13
+    else
+      alias find_by find_by_sqlite12
     end
 
     # Does what it says on the tin.  Since this will allocate an object for each row, it isn't recomended for huge tables.
@@ -151,18 +178,32 @@ module Rhubarb
       # add a find for this column (a class method)
       klass = (class << self; self end)
       klass.class_eval do 
-        define_method find_method_name do |arg|
-          results = []
-          arg = Util.rhubarb_fk_identity(arg)
-          db.do_query(find_query, arg) {|row| results << self.new(row)}
-          results
-        end
-
-        define_method find_first_method_name do |arg|
-          result = nil
-          arg = Util.rhubarb_fk_identity(arg)
-          db.do_query(find_query, arg) {|row| result = self.new(row) ; break }
-          result
+        if ::Rhubarb::Persistence::sqlite_13
+          define_method find_method_name do |arg|
+            results = []
+            arg = Util.rhubarb_fk_identity(arg)
+            db.do_query(find_query, arg) {|row| results << self.new(row)}
+            results
+          end
+          
+          define_method find_first_method_name do |arg|
+            result = nil
+            arg = Util.rhubarb_fk_identity(arg)
+            db.do_query(find_query, arg) {|row| result = self.new(row) ; break }
+            result
+          end
+        else
+          define_method find_method_name do |arg|
+            results = []
+            db.do_query(find_query, arg) {|row| results << self.new(row)}
+            results
+          end
+          
+          define_method find_first_method_name do |arg|
+            result = nil
+            db.do_query(find_query, arg) {|row| result = self.new(row) ; break }
+            result
+          end
         end
       end
 
