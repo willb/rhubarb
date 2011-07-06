@@ -15,7 +15,16 @@ require 'helper'
 require 'fileutils'
 
 Customer = Struct.new(:name, :address)
+SQLITE_13 = ::Rhubarb::Persistence::sqlite_13
+CONSTRAINT_EXCEPTION = SQLITE_13 ? SQLite3::ConstraintException : SQLite3::SQLException
 
+BFB_MAX = 512
+
+class ParityTest
+  include Rhubarb::Persisting
+  declare_column :number, :integer
+  declare_column :parity, :boolean
+end
 
 class TestClass 
   include Rhubarb::Persisting  
@@ -138,13 +147,13 @@ class Order
   declare_column :group, :int
 end
 
-class PreparedStmtBackendTests < Test::Unit::TestCase  
+class NoPreparedStmtBackendTests < Test::Unit::TestCase  
   def dbfile
     ENV['RHUBARB_TEST_DB'] || ":memory:"
   end
   
   def use_prepared
-    true
+    false
   end
 
   def setup
@@ -168,7 +177,7 @@ class PreparedStmtBackendTests < Test::Unit::TestCase
     klasses << ObjectTestTable
     klasses << RhubarbNamespace::NMTC
     klasses << RhubarbNamespace::NMTC2
-
+    klasses << ParityTest
     klasses.each { |klass| klass.create_table }
 
     @flist = []
@@ -176,6 +185,34 @@ class PreparedStmtBackendTests < Test::Unit::TestCase
 
   def teardown
     Rhubarb::Persistence::close()
+  end
+
+  def test_boolean_find_by
+    # believe me, I chuckled while writing this
+    bit_parity = Proc.new do |k|
+      k.to_s(2).split("0").join.size.even?
+    end
+    
+    expected_numbers = Set.new
+
+    BFB_MAX.times do |i|
+      ParityTest.create(:number=>i, :parity=>bit_parity.call(i))
+      expected_numbers << i
+    end
+    
+    even = ParityTest.find_by(:parity=>true)
+    odd = ParityTest.find_by(:parity=>false)
+
+    assert_equal(BFB_MAX, even.size+odd.size)
+    {even=>true, odd=>false}.each do |collection, par|
+      collection.each do |pt|
+        assert_equal(bit_parity.call(pt.number), pt.parity)
+        assert_equal(par, pt.parity)
+        expected_numbers.delete(pt.number)
+      end
+    end
+
+    assert_equal(0, expected_numbers.size)
   end
 
   def test_reserved_word_table
@@ -514,9 +551,9 @@ class PreparedStmtBackendTests < Test::Unit::TestCase
     
     result = TestClass.find_by_foo(2)
     tc = result[0]
-    assert(result.size == 1, "TestClass.find_by_foo(2) should return exactly one result")
-    assert(tc.foo == 2, "tc.foo (found by foo) should have the value 2")
-    assert(tc.bar == "argh", "tc.bar (found by foo) should have the value \"argh\"")
+    assert_equal(1, result.size, "TestClass.find_by_foo(2) should return exactly one result")
+    assert_equal(2, tc.foo, "tc.foo (found by foo) should have the value 2")
+    assert_equal("argh", tc.bar, "tc.bar (found by foo) should have the value \"argh\"")
   end
 
   def test_create_and_find_first_by_foo
@@ -653,7 +690,7 @@ class PreparedStmtBackendTests < Test::Unit::TestCase
   end
 
   def test_referential_integrity
-    assert_raise SQLite3::SQLException do 
+    assert_raise CONSTRAINT_EXCEPTION do
       FromRef.create(:t => 42)
     end
     
@@ -981,8 +1018,10 @@ class PreparedStmtBackendTests < Test::Unit::TestCase
   end
 end
 
-class NoPreparedStmtBackendTests < PreparedStmtBackendTests  
-  def use_prepared
-    false
+unless SQLITE_13
+  class PreparedStmtBackendTests < NoPreparedStmtBackendTests  
+    def use_prepared
+      true
+    end
   end
 end

@@ -55,6 +55,11 @@ module Rhubarb
       @backed = true
       @tuple = tup
       mark_fresh
+      
+      unless @tuple.is_a?(Hash)
+        @tuple = Hash[*self.class.columns.map{|c| c.name}.zip(tup).flatten]
+      end
+      
       @row_id = @tuple["row_id"]
       @created = @tuple["created"]
       @updated = @tuple["updated"]
