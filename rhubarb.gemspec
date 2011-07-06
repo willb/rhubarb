@@ -33,6 +33,7 @@ Gem::Specification.new do |s|
     "lib/rhubarb/reference.rb",
     "lib/rhubarb/rhubarb.rb",
     "lib/rhubarb/util.rb",
+    "rhubarb.gemspec",
     "ruby-rhubarb.spec.in",
     "test/helper.rb",
     "test/test_rhubarb.rb"
