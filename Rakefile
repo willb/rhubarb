@@ -58,7 +58,7 @@ def pkg_rel
 end
 
 def pkg_source
-  return pkg_name() + "-" + pkg_version() + "-" + pkg_rel() + ".tar.gz"
+  return "#{pkg_name}-#{pkg_version}.tar.gz"
 end
 
 def pkg_dir
