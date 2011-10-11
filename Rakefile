@@ -46,11 +46,11 @@ def name
 end
 
 def pkg_name
-  return "ruby-" + name()
+  "ruby-#{name}"
 end
 
 def pkg_spec
-  return pkg_name() + ".spec"
+  "#{pkg_name}.spec"
 end
 
 def pkg_rel
@@ -69,6 +69,25 @@ def rpm_dirs
   return %w{BUILD BUILDROOT RPMS SOURCES SPECS SRPMS}
 end
 
+def package_prefix
+  "#{pkg_name}-#{pkg_version}"
+end
+
+def pristine_name
+  "#{package_prefix}.tar.gz"
+end
+
+desc "upload a pristine tarball for the current release to fedorahosted"
+task :upload_pristine => [:pristine] do
+  raise "Please set FH_USERNAME" unless ENV['FH_USERNAME']
+  sh "scp #{pristine_name} #{ENV['FH_USERNAME']}@fedorahosted.org:grid"
+end
+
+desc "generate a pristine tarball for the tag corresponding to the current version"
+task :pristine do
+  sh "git archive --format=tar v#{pkg_version} --prefix=#{package_prefix}/ | gzip -9v > #{pristine_name}"
+end
+
 desc "create RPMs"
 task :rpms => [:build, :tarball, :gen_spec] do
   FileUtils.cp pkg_spec(), 'SPECS'
@@ -81,11 +100,8 @@ task :gen_spec do
 end
 
 desc "Create a tarball"
-task :tarball => [:make_rpmdirs, :gen_spec] do
-  FileUtils.cp_r 'lib', pkg_dir()
-  FileUtils.cp ['LICENSE', 'README.rdoc', 'CHANGES', 'TODO', 'VERSION'], pkg_dir()
-  sh "tar -cf #{pkg_source} #{pkg_dir}"
-  FileUtils.mv pkg_source(), 'SOURCES'
+task :tarball => [:pristine] do
+  FileUtils.cp pristine_name, 'SOURCES'
 end
 
 desc "Make dirs for building RPM"
