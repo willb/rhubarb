@@ -9,7 +9,7 @@
 Summary: Simple versioned object-graph persistence layer
 Name: ruby-rhubarb
 Version: RHUBARB_VERSION
-Release: 3%{?dist}
+Release: 1%{?dist}
 Group: Applications/System
 License: ASL 2.0
 URL: http://git.fedorahosted.org/git/grid/rhubarb.git
@@ -55,6 +55,10 @@ rm -rf %{buildroot}
 %{ruby_sitelib}/rhubarb/
 
 %changelog
+
+* Tue Oct 11 2011 willb <willb@redhat> - 0.4.1-1
+- Updated to version 0.4.1, which exclusively includes build workflow improvements
+
 * Wed Sep 21 2011 willb <willb@redhat> - 0.4.0-3
 - specfile changes:  conditionalized out all EL5 stuff
 
