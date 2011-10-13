@@ -85,7 +85,7 @@ end
 
 desc "generate a pristine tarball for the tag corresponding to the current version"
 task :pristine do
-  sh "git archive --format=tar v#{pkg_version} --prefix=#{package_prefix}/ | gzip -9v > #{pristine_name}"
+  sh "git archive --format=tar v#{pkg_version} --prefix=#{package_prefix}/ | gzip -9nv > #{pristine_name}"
 end
 
 desc "create RPMs"
