@@ -89,7 +89,7 @@ task :pristine do
 end
 
 desc "create RPMs"
-task :rpms => [:build, :tarball, :gen_spec] do
+task :rpms => [:tarball, :gen_spec] do
   FileUtils.cp pkg_spec(), 'SPECS'
   sh "rpmbuild --define=\"_topdir \${PWD}\" -ba SPECS/#{pkg_spec}"
 end
@@ -100,7 +100,7 @@ task :gen_spec do
 end
 
 desc "Create a tarball"
-task :tarball => [:pristine] do
+task :tarball => [:make_rpmdirs, :pristine] do
   FileUtils.cp pristine_name, 'SOURCES'
 end
 
