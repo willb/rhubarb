@@ -70,7 +70,7 @@ module Rhubarb
     end
 
     def self.sqlite_13
-      result = SQLite3.constants.include?("VERSION") && SQLite3::VERSION =~ /1\.3\.[0-9]+/
+      result = (SQLite3.constants.include?("VERSION") || SQLite3.constants.include?(:VERSION)) && SQLite3::VERSION =~ /1\.3\.[0-9]+/
       !!result
     end
 
