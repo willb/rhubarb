@@ -62,7 +62,7 @@ rm -rf %{buildroot}
 
 %changelog
 
-* Wed Feb 8 2011 willb <willb@redhat> - 0.4.2-1
+* Wed Feb 8 2012 willb <willb@redhat> - 0.4.2-1
 - Fixes for running under Ruby 1.9
 
 * Tue Oct 11 2011 willb <willb@redhat> - 0.4.1-1
