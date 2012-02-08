@@ -6,6 +6,12 @@
 %global building_for_el5 0
 %endif
 
+%if (0%{?fedora} >= 17)
+%global ruby_abi 1.9.1
+%else
+%global ruby_abi 1.8
+%endif
+
 Summary: Simple versioned object-graph persistence layer
 Name: ruby-rhubarb
 Version: RHUBARB_VERSION
@@ -17,7 +23,7 @@ Source0: https://fedorahosted.org/releases/g/r/grid/%{name}-%{version}.tar.gz
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 Requires: ruby-sqlite3
 Requires: ruby
-Requires: ruby(abi) = 1.8
+Requires: ruby(abi) = %{?ruby_abi}
 Provides: ruby(rhubarb/rhubarb)
 BuildRequires: ruby
 BuildArch: noarch
@@ -55,6 +61,9 @@ rm -rf %{buildroot}
 %{ruby_sitelib}/rhubarb/
 
 %changelog
+
+* Wed Feb 8 2011 willb <willb@redhat> - 0.4.2-1
+- Fixes for running under Ruby 1.9
 
 * Tue Oct 11 2011 willb <willb@redhat> - 0.4.1-1
 - Updated to version 0.4.1, which exclusively includes build workflow improvements
