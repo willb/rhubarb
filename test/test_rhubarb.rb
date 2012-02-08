@@ -285,7 +285,7 @@ class NoPreparedStmtBackendTests < Test::Unit::TestCase
   def test_instance_methods
     ["foo", "bar"].each do |prefix|
       ["#{prefix}", "#{prefix}="].each do |m|
-        assert TestClass.instance_methods.include?(m), "#{m} method not declared in TestClass"
+        assert TestClass.method_defined?(m), "#{m} method not declared in TestClass"
       end
     end
   end
@@ -293,7 +293,7 @@ class NoPreparedStmtBackendTests < Test::Unit::TestCase
   def test_instance_methods2
     ["fred", "barney"].each do |prefix|
       ["#{prefix}", "#{prefix}="].each do |m|
-        assert TestClass2.instance_methods.include?(m), "#{m} method not declared in TestClass2"
+        assert TestClass2.method_defined?(m), "#{m} method not declared in TestClass2"
       end
     end
   end
@@ -301,7 +301,7 @@ class NoPreparedStmtBackendTests < Test::Unit::TestCase
   def test_instance_methods_neg
     ["fred", "barney"].each do |prefix|
       ["#{prefix}", "#{prefix}="].each do |m|
-        bogus_include = TestClass.instance_methods.include? m
+        bogus_include = TestClass.method_defined? m
         assert(bogus_include == false, "#{m} method declared in TestClass; shouldn't be")
       end
     end
@@ -345,7 +345,7 @@ class NoPreparedStmtBackendTests < Test::Unit::TestCase
   def test_instance_methods_dont_include_class_methods
     ["foo", "bar"].each do |prefix|
       ["find_by_#{prefix}", "find_first_by_#{prefix}"].each do |m|
-        bogus_include = TestClass.instance_methods.include? m
+        bogus_include = TestClass.method_defined? m
         assert(bogus_include == false, "#{m} method declared in TestClass; shouldn't be")
       end
     end
@@ -362,7 +362,7 @@ class NoPreparedStmtBackendTests < Test::Unit::TestCase
     ["foo", "bar"].each do |prefix|
       ["find_by_#{prefix}", "find_first_by_#{prefix}"].each do |m|
         klass = class << TestClass; self end
-        assert klass.instance_methods.include?(m), "#{m} method not declared in TestClass' eigenclass"
+        assert klass.method_defined?(m), "#{m} method not declared in TestClass' eigenclass"
       end
     end
   end
@@ -371,7 +371,7 @@ class NoPreparedStmtBackendTests < Test::Unit::TestCase
     ["fred", "barney"].each do |prefix|
       ["find_by_#{prefix}", "find_first_by_#{prefix}"].each do |m|
         klass = class << TestClass2; self end
-        assert klass.instance_methods.include?(m), "#{m} method not declared in TestClass2's eigenclass"
+        assert klass.method_defined?(m), "#{m} method not declared in TestClass2's eigenclass"
       end
     end
   end
@@ -385,7 +385,7 @@ class NoPreparedStmtBackendTests < Test::Unit::TestCase
           include Rhubarb::Persisting
         end
 
-        bogus_include = klass.instance_methods.include?(m)
+        bogus_include = klass.method_defined?(m)
         assert(bogus_include == false, "#{m} method declared in eigenclass of class including Rhubarb::Persisting; shouldn't be")
       end
     end
@@ -395,7 +395,7 @@ class NoPreparedStmtBackendTests < Test::Unit::TestCase
     ["fred", "barney"].each do |prefix|
       ["find_by_#{prefix}", "find_first_by_#{prefix}"].each do |m|
         klass = class << TestClass; self end
-        bogus_include = klass.instance_methods.include?(m)
+        bogus_include = klass.method_defined?(m)
         assert(bogus_include == false, "#{m} method declared in TestClass' eigenclass; shouldn't be")
       end
     end
