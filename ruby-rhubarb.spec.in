@@ -62,6 +62,9 @@ rm -rf %{buildroot}
 
 %changelog
 
+* Thu Feb 9 2012 willb <willb@redhat> - 0.4.3-1
+- More fixes for running under Ruby 1.9
+
 * Wed Feb 8 2012 willb <willb@redhat> - 0.4.2-1
 - Fixes for running under Ruby 1.9
 
