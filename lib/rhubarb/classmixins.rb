@@ -213,41 +213,53 @@ module Rhubarb
 
       out_xform = PCM_OUTPUT_TRANSFORMERS[kind]
       # add accessors
-      define_method get_method_name do
-        freshen
-        return nil unless @tuple
-        result = @tuple[cname.to_s]
-        out_xform ? out_xform.call(result) : result
+
+      getp = Proc.new do |cn, ox|
+        define_method get_method_name do
+          freshen
+          return nil unless @tuple
+          lookup_result = (@tuple[cn.to_s])
+          (ox != nil) ? ox.call(lookup_result) : lookup_result
+        end
       end
+
+      getp.call(cname, out_xform)
 
       if not rf
         xform = nil
         
         xform = PCM_INPUT_TRANSFORMERS[kind]
-        
-        define_method set_method_name do |arg|
-          new_val = xform ? xform.call(arg) : arg
-          @tuple["#{cname}"] = new_val
-          update cname, new_val
-        end      
+        setp = Proc.new do |cn,xf|
+          define_method set_method_name do |arg|
+            new_val = xform ? xform.call(arg) : arg
+            @tuple["#{cn}"] = new_val
+            update cn, new_val
+          end     
+        end
+
+        setp.call(cname,xform)
       else
         # this column references another table; create a set 
         # method that can handle either row objects or row IDs
-        define_method set_method_name do |arg|
-          freshen
-
-          arg_id = nil
-
-          if arg.class == Fixnum
-            arg_id = arg
-            arg = rf.referent.find arg_id
-          else
-            arg_id = arg.row_id
+        setp = Proc.new do |cn, rf|
+          define_method set_method_name do |arg|
+            freshen
+            
+            arg_id = nil
+            
+            if arg.class == Fixnum
+              arg_id = arg
+              arg = rf.referent.find arg_id
+            else
+              arg_id = arg.row_id
+            end
+            @tuple["#{cn}"] = arg
+            
+            update cn, arg_id
           end
-          @tuple["#{cname}"] = arg
-
-          update cname, arg_id
         end
+
+        setp.call(cname, rf)
 
         # Finally, add appropriate triggers to ensure referential integrity.
         # If rf has an on_delete trigger, also add the necessary
