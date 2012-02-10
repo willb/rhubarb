@@ -8,12 +8,6 @@
 
 %if (0%{?fedora} >= 17)
 %global ruby_abi 1.9.1
-%else
-%global ruby_abi 1.8
-%endif
-
-%if (0%{?fedora} >= 17)
-%global ruby_abi 1.9.1
 %global ruby_appropriate_install_dir %{ruby_vendorlibdir}
 %else
 %global ruby_abi 1.8
@@ -24,7 +18,7 @@
 Summary: Simple versioned object-graph persistence layer
 Name: ruby-rhubarb
 Version: RHUBARB_VERSION
-Release: 2%{?dist}
+Release: 3%{?dist}
 Group: Applications/System
 License: ASL 2.0
 URL: http://git.fedorahosted.org/git/grid/rhubarb.git
@@ -67,9 +61,12 @@ rm -rf %{buildroot}
 %defattr(-, root, root, -)
 %endif
 %doc LICENSE README.rdoc CHANGES TODO VERSION
-%{ruby_appropriate_install_dir}/rhubarb/
+/%{ruby_appropriate_install_dir}/rhubarb/
 
 %changelog
+
+* Fri Feb 10 2012 willb <willb@redhat> - 0.4.3-3
+- Another F17 fix.
 
 * Fri Feb 10 2012 willb <willb@redhat> - 0.4.3-2
 - Packaging fixes for F17.
