@@ -20,7 +20,7 @@
 Summary: Simple versioned object-graph persistence layer
 Name: ruby-rhubarb
 Version: RHUBARB_VERSION
-Release: 3%{?dist}
+Release: 4%{?dist}
 Group: Applications/System
 License: ASL 2.0
 URL: http://git.fedorahosted.org/git/grid/rhubarb.git
