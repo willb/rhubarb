@@ -9,8 +9,10 @@
 %if (0%{?fedora} >= 17)
 %global ruby_abi 1.9.1
 %global ruby_appropriate_install_dir %{ruby_vendorlibdir}
+%global requires_ruby_devel 1
 %else
 %global ruby_abi 1.8
+%global requires_ruby_devel 0
 %{!?ruby_sitelib: %global ruby_sitelib %(ruby -rrbconfig -e 'puts Config::CONFIG["sitelibdir"] ')}
 %global ruby_appropriate_install_dir %{ruby_sitelib}
 %endif
@@ -29,6 +31,9 @@ Requires: ruby
 Requires: ruby(abi) = %{?ruby_abi}
 Provides: ruby(rhubarb/rhubarb)
 BuildRequires: ruby
+%if %{requires_ruby_devel}
+BuildRequires: ruby-devel
+%endif
 BuildArch: noarch
 
 %description
@@ -61,9 +66,12 @@ rm -rf %{buildroot}
 %defattr(-, root, root, -)
 %endif
 %doc LICENSE README.rdoc CHANGES TODO VERSION
-/%{ruby_appropriate_install_dir}/rhubarb/
+%{ruby_appropriate_install_dir}/rhubarb/
 
 %changelog
+
+* Mon Mar 26 2012 willb <willb@redhat> - 0.4.3-4
+- F17 packaging fixes.
 
 * Fri Feb 10 2012 willb <willb@redhat> - 0.4.3-3
 - Another F17 fix.
