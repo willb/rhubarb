@@ -10,9 +10,11 @@
 %global ruby_abi 1.9.1
 %global ruby_appropriate_install_dir %{ruby_vendorlibdir}
 %global requires_ruby_devel 1
+%global sqlite_pkg rubygem-sqlite3
 %else
 %global ruby_abi 1.8
 %global requires_ruby_devel 0
+%global sqlite_pkg ruby-sqlite3
 %{!?ruby_sitelib: %global ruby_sitelib %(ruby -rrbconfig -e 'puts Config::CONFIG["sitelibdir"] ')}
 %global ruby_appropriate_install_dir %{ruby_sitelib}
 %endif
@@ -20,13 +22,13 @@
 Summary: Simple versioned object-graph persistence layer
 Name: ruby-rhubarb
 Version: RHUBARB_VERSION
-Release: 4%{?dist}
+Release: 5%{?dist}
 Group: Applications/System
 License: ASL 2.0
 URL: http://git.fedorahosted.org/git/grid/rhubarb.git
 Source0: https://fedorahosted.org/releases/g/r/grid/%{name}-%{version}.tar.gz
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
-Requires: ruby-sqlite3
+Requires: %{sqlite_pkg}
 Requires: ruby
 Requires: ruby(abi) = %{?ruby_abi}
 Provides: ruby(rhubarb/rhubarb)
@@ -70,8 +72,11 @@ rm -rf %{buildroot}
 
 %changelog
 
-* Mon Mar 26 2012 willb <willb@redhat> - 0.4.3-4
+* Mon Mar 26 2012 willb <willb@redhat> - 0.4.3-5
 - F17 packaging fixes.
+
+* Sun Feb 12 2012 willb <willb@redhat> - 0.4.3-4
+- Changed SQLite dependency to the gem version on F17.
 
 * Fri Feb 10 2012 willb <willb@redhat> - 0.4.3-3
 - Another F17 fix.
